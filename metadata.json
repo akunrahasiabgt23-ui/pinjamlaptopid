@@ -1,0 +1,7 @@
+{
+  "name": "Pinjamlaptop",
+  "description": "Aplikasi persewaan laptop profesional dengan katalog lengkap, verifikasi 2 identitas atau deposit, notifikasi admin, dan pelacakan status real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

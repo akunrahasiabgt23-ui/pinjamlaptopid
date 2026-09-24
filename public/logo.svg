@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Main Vibrant Cyan to Royal Blue Gradient -->
+    <linearGradient id="userLogoGradFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00baf2" />
+      <stop offset="28%" stop-color="#008be3" />
+      <stop offset="68%" stop-color="#005ec9" />
+      <stop offset="100%" stop-color="#0041a8" />
+    </linearGradient>
+
+    <!-- Inner 3D Floor Shadow Facet -->
+    <linearGradient id="userLogoFacetFull" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#002b66" />
+      <stop offset="60%" stop-color="#003d85" />
+      <stop offset="100%" stop-color="#00224d" />
+    </linearGradient>
+
+    <!-- Lower Spur Gradient -->
+    <linearGradient id="userLogoSpurFull" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#007fda" />
+      <stop offset="100%" stop-color="#0044ae" />
+    </linearGradient>
+
+    <!-- Highlight -->
+    <linearGradient id="userLogoHighlightFull" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6" />
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Shadow -->
+    <filter id="logoShadowFull" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#005ec9" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <g transform="translate(100, 30) scale(3.0)" filter="url(#logoShadowFull)">
+    <!-- 1. Main Upper Loop & Left Spear Wing -->
+    <path
+      d="M 28 8 
+         L 76 9 
+         C 86 9 93 14 96 22 
+         C 98.5 28 98 36 94 44 
+         C 89 53 82 58 72 58 
+         L 46 58 
+         L 1 60 
+         L 37 49 
+         L 45 49 
+         L 70 49 
+         C 76 49 80 43 81 37 
+         C 82 30 78 22 70 22 
+         L 44 22 
+         L 36 49 
+         L 28 8 
+         Z"
+      fill="url(#userLogoGradFull)"
+    />
+
+    <!-- 2. Inner 3D Floor Facet -->
+    <path
+      d="M 36 49 
+         L 70 49 
+         C 77 49 81 44 81 37 
+         L 48 37 
+         Z"
+      fill="url(#userLogoFacetFull)"
+      opacity="0.9"
+    />
+
+    <!-- 3. Lower Southwestern Triangle Spur -->
+    <path
+      d="M 22 65 
+         L 48 65 
+         L 17 92 
+         Z"
+      fill="url(#userLogoSpurFull)"
+    />
+
+    <!-- 4. Specular Highlight -->
+    <path
+      d="M 28 8 L 76 9 C 84 9 90 12 94 18"
+      stroke="url(#userLogoHighlightFull)"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- Typography below mark -->
+  <g transform="translate(0, 370)">
+    <text x="250" y="32" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+      <tspan font-weight="900" font-size="34" fill="#0f172a" letter-spacing="1">PINJAM</tspan>
+      <tspan font-weight="700" font-size="34" fill="#0284c7" letter-spacing="1">LAPTOP.ID</tspan>
+    </text>
+    <text x="250" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="12" fill="#64748b" letter-spacing="1.5">
+      0877-2596-4455 • JL. TAMAN BOROBUDUR INDAH B-20
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          var fetchVal = typeof originalFetch === 'function' ? originalFetch.bind(window) : originalFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return fetchVal;
+            },
+            set: function(val) {
+              fetchVal = val;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          try {
+            var proto = Object.getPrototypeOf(window) || (typeof Window !== 'undefined' ? Window.prototype : null);
+            if (proto) {
+              var protoFetch = proto.fetch;
+              var pVal = typeof protoFetch === 'function' ? protoFetch.bind(window) : protoFetch;
+              Object.defineProperty(proto, 'fetch', {
+                get: function() { return pVal; },
+                set: function(val) { pVal = val; },
+                configurable: true,
+                enumerable: true
+              });
+            }
+          } catch (e2) {}
+        }
+      })();
+    </script>
+    <title>Pinjamlaptop - Solusi Sewa Laptop Cepat, Aman & Terpercaya</title>
+    <meta name="description" content="Aplikasi persewaan laptop profesional dengan katalog lengkap, verifikasi identitas resmi, notifikasi pemrosesan admin, dan pelacakan status sewa real-time." />
+    <meta property="og:title" content="Pinjamlaptop - Solusi Sewa Laptop Cepat, Aman & Terpercaya" />
+    <meta property="og:description" content="Aplikasi persewaan laptop profesional dengan katalog lengkap, verifikasi identitas resmi, notifikasi pemrosesan admin, dan pelacakan status sewa real-time." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
