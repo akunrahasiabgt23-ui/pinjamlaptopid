@@ -21,20 +21,23 @@ export const AdminLoginForm: React.FC<AdminLoginFormProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = loginAdmin(username, password);
+    try {
+      const res = await loginAdmin(username, password);
       setIsLoading(false);
       if (res.success && res.session) {
         onLoginSuccess(res.session);
       } else {
         setErrorMessage(res.message);
       }
-    }, 400);
+    } catch (err) {
+      setIsLoading(false);
+      setErrorMessage('Terjadi kesalahan saat masuk ke server.');
+    }
   };
 
   return (

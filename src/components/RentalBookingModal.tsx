@@ -152,12 +152,12 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
   };
 
   // Helper untuk Login Member
-  const handleLoginMember = (idOverride?: string, passOverride?: string): boolean => {
+  const handleLoginMember = async (idOverride?: string, passOverride?: string): Promise<boolean> => {
     const id = (idOverride ?? memberIdInput).trim();
     const pass = passOverride ?? memberPasswordInput;
     setLoginError('');
 
-    const res = authenticateMember(id, pass);
+    const res = await authenticateMember(id, pass);
     if (!res.success || !res.member) {
       setLoginError(res.message);
       return false;
@@ -290,40 +290,40 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
       const orderId = `PL-${randomSuffix}-${cityCode}`;
       const pickupPinCode = deliveryMethod === 'self_pickup' ? String(Math.floor(100000 + Math.random() * 900000)) : undefined;
 
-      // Update / simpan semua detail sewa yang diisi customer ke Database Member
+      // Update detail sewa yang diisi customer ke Database Member jika login atau membuat akun dengan kata sandi
       const activeMemberId = loggedInMember
         ? loggedInMember.memberId
         : (memberIdInput.trim() || `member_${Date.now()}`);
 
-      const activePassword = loggedInMember
-        ? loggedInMember.password
-        : (memberPasswordInput.trim() || 'pinjam123');
+      const userProvidedPassword = memberPasswordInput.trim();
 
-      registerOrUpdateMember({
-        memberId: activeMemberId,
-        password: activePassword,
-        fullName: customerName,
-        phone: customerPhone,
-        email: customerEmail,
-        address: customerAddress,
-        city: customerCity,
-        notes: customerNotes,
-        deliveryMethod,
-        preferredHub: selectedHub,
-        guaranteeType,
-        doc1Type,
-        doc1Number,
-        doc1HolderName,
-        doc2Type,
-        doc2Number,
-        doc2HolderName,
-        emergency1Name,
-        emergency1Relation,
-        emergency1Phone,
-        emergency2Name,
-        emergency2Relation,
-        emergency2Phone
-      });
+      if (loggedInMember || (userProvidedPassword && userProvidedPassword.length >= 8)) {
+        registerOrUpdateMember({
+          memberId: activeMemberId,
+          password: loggedInMember ? loggedInMember.password : userProvidedPassword,
+          fullName: customerName,
+          phone: customerPhone,
+          email: customerEmail,
+          address: customerAddress,
+          city: customerCity,
+          notes: customerNotes,
+          deliveryMethod,
+          preferredHub: selectedHub,
+          guaranteeType,
+          doc1Type,
+          doc1Number,
+          doc1HolderName,
+          doc2Type,
+          doc2Number,
+          doc2HolderName,
+          emergency1Name,
+          emergency1Relation,
+          emergency1Phone,
+          emergency2Name,
+          emergency2Relation,
+          emergency2Phone
+        });
+      }
 
       const newOrder: RentalOrder = {
         id: orderId,

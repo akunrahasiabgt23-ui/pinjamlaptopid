@@ -46,7 +46,7 @@ export const RentalExtensionModal: React.FC<RentalExtensionModalProps> = ({
     setIsCustom(true);
   };
 
-  const handleConfirmExtension = (e: React.FormEvent) => {
+  const handleConfirmExtension = async (e: React.FormEvent) => {
     e.preventDefault();
     if (daysToApply <= 0) {
       alert('Tambahan hari perpanjangan minimal 1 hari.');
@@ -54,7 +54,7 @@ export const RentalExtensionModal: React.FC<RentalExtensionModalProps> = ({
     }
 
     setIsSubmitting(true);
-    const res = extendOrderRental(
+    const res = await extendOrderRental(
       order.id,
       daysToApply,
       pricing.finalPrice,

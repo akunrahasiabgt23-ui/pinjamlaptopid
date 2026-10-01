@@ -22,13 +22,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = loginAdmin(username, password);
+    try {
+      const res = await loginAdmin(username, password);
       setIsLoading(false);
       if (res.success && res.session) {
         onLoginSuccess(res.session);
@@ -36,7 +36,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       } else {
         setErrorMessage(res.message || 'ID Petugas atau Password salah');
       }
-    }, 350);
+    } catch (err) {
+      setIsLoading(false);
+      setErrorMessage('Terjadi kesalahan saat verifikasi ke server.');
+    }
   };
 
   return (

@@ -233,7 +233,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <ChevronRight className="w-4 h-4 opacity-70" />
               </button>
 
-              {isAdminLoggedIn && (
+              {!isAdminLoggedIn ? (
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    if (onOpenAdminLogin) onOpenAdminLogin();
+                  }}
+                  className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-slate-500" />
+                    <span>Login Petugas / Admin</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold border border-slate-200">
+                    Khusus Petugas
+                  </span>
+                </button>
+              ) : (
                 <button
                   onClick={() => handleNavClick('admin')}
                   className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-colors ${

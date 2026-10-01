@@ -5,106 +5,30 @@ import {
 } from '../types';
 import { LAPTOP_CATALOG, generateLaptopSku, getBranchCityForLaptop, generateSerialNumber } from '../data/laptops';
 
-const ORDERS_KEY = 'pinjamlaptop_orders_v2';
-const NOTIFICATIONS_KEY = 'pinjamlaptop_admin_notifications_v1';
-const CATALOG_KEY = 'pinjamlaptop_catalog_v103';
+// In-memory cache for client state
+let cachedLaptops: Laptop[] = LAPTOP_CATALOG;
+let cachedOrders: RentalOrder[] = [];
+let cachedNotifications: AdminNotification[] = [];
+let cachedMembers: CustomerMember[] = [];
+let cachedCustomerSession: CustomerMember | null = null;
+let cachedAdminSession: AdminUserSession | null = null;
+let isInitialized = false;
 
-// Catalog management storage functions
-export const getStoredLaptops = (): Laptop[] => {
-  try {
-    const data = localStorage.getItem(CATALOG_KEY);
-    if (!data) {
-      localStorage.setItem(CATALOG_KEY, JSON.stringify(LAPTOP_CATALOG));
-      return LAPTOP_CATALOG;
-    }
-    const parsed = JSON.parse(data);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Pastikan denda keterlambatan selalu terstandar 20.000 / jam, SKU selalu terisi, serialNumber dan branchCity tersedia
-      return parsed.map((l, index) => {
-        const branchCity = l.branchCity || getBranchCityForLaptop(l, index);
-        const serialNumber = l.serialNumber || generateSerialNumber(l, index);
-        return {
-          ...l,
-          branchCity,
-          branchHubId: l.branchHubId || (branchCity === 'Malang' ? 'hub-malang' : branchCity === 'Sidoarjo' ? 'hub-sidoarjo' : 'hub-bekasi'),
-          sku: l.sku || generateLaptopSku(l, index),
-          serialNumber,
-          lateFeePerHour: l.lateFeePerHour || 20000
-        };
-      });
-    }
-    return LAPTOP_CATALOG;
-  } catch (err) {
-    console.error('Error reading catalog from storage:', err);
-    return LAPTOP_CATALOG;
-  }
-};
-
-export const saveStoredLaptops = (laptops: Laptop[]): void => {
-  try {
-    localStorage.setItem(CATALOG_KEY, JSON.stringify(laptops));
-    window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
-  } catch (err) {
-    console.error('Error saving catalog to storage:', err);
-  }
-};
-
-export const updateStoredLaptop = (updatedLaptop: Laptop): Laptop[] => {
-  const current = getStoredLaptops();
-  const index = current.findIndex(l => l.id === updatedLaptop.id);
-  if (index !== -1) {
-    current[index] = updatedLaptop;
-  } else {
-    current.unshift(updatedLaptop);
-  }
-  saveStoredLaptops(current);
-  return current;
-};
-
-export const addStoredLaptop = (newLaptop: Laptop): Laptop[] => {
-  const current = getStoredLaptops();
-  const laptopWithSkuAndSn: Laptop = {
-    ...newLaptop,
-    sku: newLaptop.sku?.trim() || generateLaptopSku(newLaptop, current.length),
-    serialNumber: newLaptop.serialNumber?.trim() || generateSerialNumber(newLaptop, current.length)
-  };
-  current.unshift(laptopWithSkuAndSn);
-  saveStoredLaptops(current);
-  return current;
-};
-
-export const deleteStoredLaptop = (laptopId: string): Laptop[] => {
-  const current = getStoredLaptops().filter(l => l.id !== laptopId);
-  saveStoredLaptops(current);
-  return current;
-};
-
-export const resetStoredLaptopsToDefault = (): Laptop[] => {
-  saveStoredLaptops(LAPTOP_CATALOG);
-  return LAPTOP_CATALOG;
-};
-
-// Initial sample orders to make the app immediately testable and rich
+// Initial sample orders fallback before server fetch completes
 const getInitialOrders = (): RentalOrder[] => {
   const now = new Date();
-  
-  // Order 1: Active rental (ends in 2 days)
   const order1Start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const order1End = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-
-  // Order 2: Awaiting verification (Just submitted by customer via Delivery)
   const order2Start = new Date(now.getTime() + 2 * 60 * 60 * 1000);
   const order2End = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  // Order 3: Ready for pick up at store hub (Self Pick-up with PIN code)
   const order3Start = new Date(now.getTime());
   const order3End = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  const initialOrders: RentalOrder[] = [
+  return [
     {
       id: 'PL-8821-JKT',
       createdAt: order1Start.toISOString(),
-      laptop: LAPTOP_CATALOG[0], // MacBook Pro 14 M3
+      laptop: LAPTOP_CATALOG[0],
       customer: {
         fullName: 'Bagas Aditya Rahman',
         idCardNumber: '3174092408980004',
@@ -131,16 +55,8 @@ const getInitialOrders = (): RentalOrder[] => {
         doc2FileName: 'sim_a_bagas.jpg'
       },
       emergencyContacts: [
-        {
-          name: 'Hendra Saputra',
-          relationship: 'Saudara Kandung',
-          phone: '0813-2244-8811'
-        },
-        {
-          name: 'Rina Kusuma',
-          relationship: 'Rekan Kerja / Manajer',
-          phone: '0857-1122-3344'
-        }
+        { name: 'Hendra Saputra', relationship: 'Saudara Kandung', phone: '0813-2244-8811' },
+        { name: 'Rina Kusuma', relationship: 'Rekan Kerja / Manajer', phone: '0857-1122-3344' }
       ],
       warningAgreed100PercentForfeited: true,
       paymentMethod: 'qris',
@@ -198,7 +114,7 @@ const getInitialOrders = (): RentalOrder[] => {
     {
       id: 'PL-8822-BDG',
       createdAt: now.toISOString(),
-      laptop: LAPTOP_CATALOG[1], // ThinkPad T14 Gen 4
+      laptop: LAPTOP_CATALOG[1],
       customer: {
         fullName: 'Dian Permata Sari',
         idCardNumber: '3273014502950002',
@@ -225,16 +141,8 @@ const getInitialOrders = (): RentalOrder[] => {
         doc2FileName: 'ijazah_asli_legalisir.pdf'
       },
       emergencyContacts: [
-        {
-          name: 'Iwan Setiawan',
-          relationship: 'Orang Tua / Ayah',
-          phone: '0812-7788-9900'
-        },
-        {
-          name: 'Maya Andini',
-          relationship: 'Saudara Kandung',
-          phone: '0878-9988-1122'
-        }
+        { name: 'Iwan Setiawan', relationship: 'Orang Tua / Ayah', phone: '0812-7788-9900' },
+        { name: 'Maya Andini', relationship: 'Saudara Kandung', phone: '0878-9988-1122' }
       ],
       warningAgreed100PercentForfeited: true,
       paymentMethod: 'bca_va',
@@ -243,7 +151,7 @@ const getInitialOrders = (): RentalOrder[] => {
         dailyRate: 165000,
         durationDays: 7,
         subtotalRental: 1155000,
-        discount: 165000, // Diskon paket mingguan
+        discount: 165000,
         deliveryFee: 30000,
         depositFee: 0,
         totalPaid: 1020000
@@ -262,7 +170,7 @@ const getInitialOrders = (): RentalOrder[] => {
     {
       id: 'PL-8823-SBY',
       createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
-      laptop: LAPTOP_CATALOG[2], // ASUS ROG Zephyrus G16
+      laptop: LAPTOP_CATALOG[2],
       customer: {
         fullName: 'Fajar Nugroho Pratama',
         idCardNumber: '3578041908970001',
@@ -280,16 +188,8 @@ const getInitialOrders = (): RentalOrder[] => {
       guaranteeType: 'cash_deposit',
       depositAmount: 4500000,
       emergencyContacts: [
-        {
-          name: 'Agus Pratama',
-          relationship: 'Orang Tua',
-          phone: '0812-3322-1100'
-        },
-        {
-          name: 'Bayu Wicaksono',
-          relationship: 'Teman Satu Kantor',
-          phone: '0813-8899-7766'
-        }
+        { name: 'Agus Pratama', relationship: 'Orang Tua', phone: '0812-3322-1100' },
+        { name: 'Bayu Wicaksono', relationship: 'Teman Satu Kantor', phone: '0813-8899-7766' }
       ],
       warningAgreed100PercentForfeited: true,
       paymentMethod: 'mandiri_va',
@@ -323,80 +223,215 @@ const getInitialOrders = (): RentalOrder[] => {
       ]
     }
   ];
-
-  return initialOrders;
 };
 
-const getInitialNotifications = (): AdminNotification[] => {
-  const now = new Date();
-  return [
-    {
-      id: 'notif-1',
-      orderId: 'PL-8822-BDG',
-      type: 'new_order_delivery',
-      title: 'Pesanan Baru Perlu Pengiriman (Delivery)',
-      message: 'Customer Dian Permata Sari menyewa ThinkPad T14 (7 Hari). Pengiriman ke Tubagus Ismail, Bandung. Harap verifikasi 2 identitas!',
-      timestamp: now.toISOString(),
-      read: false,
-      orderRef: {
-        customerName: 'Dian Permata Sari',
-        laptopName: 'Lenovo ThinkPad T14 Gen 4',
-        deliveryMethod: 'delivery'
-      }
-    },
-    {
-      id: 'notif-2',
-      orderId: 'PL-8823-SBY',
-      type: 'new_order_pickup',
-      title: 'Pesanan Ambil di Hub (Self Pick-up)',
-      message: 'Fajar Nugroho Pratama telah membayar sewa + deposit Rp 4.500.000. Siap diambil di Hub Gubeng Surabaya dengan PIN 894210.',
-      timestamp: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
-      read: true,
-      orderRef: {
-        customerName: 'Fajar Nugroho Pratama',
-        laptopName: 'ASUS ROG Zephyrus G16',
-        deliveryMethod: 'self_pickup'
+cachedOrders = getInitialOrders();
+
+// Initial sync from server API
+export async function initializeAppState() {
+  if (isInitialized) return;
+  isInitialized = true;
+
+  try {
+    // 1. Fetch current Admin Session
+    const adminRes = await fetch('/api/auth/admin/me', { credentials: 'include' });
+    if (adminRes.ok) {
+      const data = await adminRes.json();
+      if (data.session) {
+        cachedAdminSession = data.session;
+        window.dispatchEvent(new Event('pinjamlaptop_admin_auth_updated'));
       }
     }
-  ];
+
+    // 2. Fetch current Customer Session
+    const custRes = await fetch('/api/auth/customer/me', { credentials: 'include' });
+    if (custRes.ok) {
+      const data = await custRes.json();
+      if (data.member) {
+        cachedCustomerSession = data.member;
+        window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
+      }
+    }
+
+    // 3. Fetch Laptops Catalog
+    const laptopRes = await fetch('/api/laptops', { credentials: 'include' });
+    if (laptopRes.ok) {
+      const data = await laptopRes.json();
+      if (Array.isArray(data.laptops) && data.laptops.length > 0) {
+        cachedLaptops = data.laptops;
+        window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
+      }
+    }
+
+    // 4. Fetch Orders if authenticated
+    await syncOrdersFromServer();
+
+    // 5. Fetch Admin Notifications if admin
+    if (cachedAdminSession) {
+      await syncNotificationsFromServer();
+      await syncMembersFromServer();
+    }
+  } catch (err) {
+    console.warn('[Sync] Server API not reachable yet or offline, using client cache:', err);
+  }
+}
+
+// Trigger initial sync on module load
+if (typeof window !== 'undefined') {
+  initializeAppState();
+}
+
+async function syncOrdersFromServer() {
+  try {
+    const res = await fetch('/api/orders', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.orders)) {
+        cachedOrders = data.orders;
+        window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
+      }
+    }
+  } catch (e) {
+    // silent fallback
+  }
+}
+
+async function syncNotificationsFromServer() {
+  try {
+    const res = await fetch('/api/admin/notifications', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.notifications)) {
+        cachedNotifications = data.notifications;
+        window.dispatchEvent(new Event('pinjamlaptop_notifications_updated'));
+      }
+    }
+  } catch (e) {
+    // silent fallback
+  }
+}
+
+async function syncMembersFromServer() {
+  try {
+    const res = await fetch('/api/admin/members', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.members)) {
+        cachedMembers = data.members;
+        window.dispatchEvent(new Event('pinjamlaptop_members_updated'));
+      }
+    }
+  } catch (e) {
+    // silent fallback
+  }
+}
+
+/* =========================================================================
+   CATALOG FUNCTIONS
+   ========================================================================= */
+
+export const getStoredLaptops = (): Laptop[] => {
+  return cachedLaptops;
 };
+
+export const saveStoredLaptops = (laptops: Laptop[]): void => {
+  cachedLaptops = laptops;
+  window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
+
+  // Sync to server batch
+  fetch('/api/laptops/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ laptops })
+  }).catch(e => console.error('Error batch updating laptops:', e));
+};
+
+export const updateStoredLaptop = (updatedLaptop: Laptop): Laptop[] => {
+  const index = cachedLaptops.findIndex(l => l.id === updatedLaptop.id);
+  if (index !== -1) {
+    cachedLaptops[index] = updatedLaptop;
+  } else {
+    cachedLaptops.unshift(updatedLaptop);
+  }
+  window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
+
+  fetch(`/api/laptops/${updatedLaptop.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(updatedLaptop)
+  }).catch(e => console.error('Error updating laptop on server:', e));
+
+  return cachedLaptops;
+};
+
+export const addStoredLaptop = (newLaptop: Laptop): Laptop[] => {
+  const total = cachedLaptops.length;
+  const laptopWithSkuAndSn: Laptop = {
+    ...newLaptop,
+    sku: newLaptop.sku?.trim() || generateLaptopSku(newLaptop, total),
+    serialNumber: newLaptop.serialNumber?.trim() || generateSerialNumber(newLaptop, total)
+  };
+  cachedLaptops.unshift(laptopWithSkuAndSn);
+  window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
+
+  fetch('/api/laptops', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(laptopWithSkuAndSn)
+  }).catch(e => console.error('Error adding laptop on server:', e));
+
+  return cachedLaptops;
+};
+
+export const deleteStoredLaptop = (laptopId: string): Laptop[] => {
+  cachedLaptops = cachedLaptops.filter(l => l.id !== laptopId);
+  window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
+
+  fetch(`/api/laptops/${laptopId}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  }).catch(e => console.error('Error deleting laptop on server:', e));
+
+  return cachedLaptops;
+};
+
+export const resetStoredLaptopsToDefault = (): Laptop[] => {
+  cachedLaptops = LAPTOP_CATALOG;
+  window.dispatchEvent(new Event('pinjamlaptop_catalog_updated'));
+
+  fetch('/api/laptops/reset', {
+    method: 'POST',
+    credentials: 'include'
+  }).catch(e => console.error('Error resetting catalog:', e));
+
+  return LAPTOP_CATALOG;
+};
+
+/* =========================================================================
+   ORDERS MANAGEMENT
+   ========================================================================= */
 
 export const getStoredOrders = (): RentalOrder[] => {
-  try {
-    const raw = localStorage.getItem(ORDERS_KEY);
-    if (!raw) {
-      const initial = getInitialOrders();
-      localStorage.setItem(ORDERS_KEY, JSON.stringify(initial));
-      return initial;
-    }
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error reading orders from storage:', err);
-    return getInitialOrders();
-  }
+  return cachedOrders;
 };
 
 export const saveOrders = (orders: RentalOrder[]) => {
-  try {
-    localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-    window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
-  } catch (err) {
-    console.error('Error saving orders:', err);
-  }
+  cachedOrders = orders;
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
 };
 
 export const getOrderById = (orderId: string): RentalOrder | undefined => {
-  const orders = getStoredOrders();
-  return orders.find(o => o.id.toLowerCase() === orderId.toLowerCase().trim());
+  return cachedOrders.find(o => o.id.toLowerCase() === orderId.toLowerCase().trim());
 };
 
 export const createNewOrder = (order: RentalOrder): void => {
-  const orders = getStoredOrders();
-  const updatedOrders = [order, ...orders];
-  saveOrders(updatedOrders);
+  cachedOrders = [order, ...cachedOrders];
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
 
-  // Otomatis buat notifikasi untuk Admin
-  const notifs = getStoredNotifications();
+  // Otomatis buat notifikasi di cache lokal
   const newNotif: AdminNotification = {
     id: `notif-${Date.now()}`,
     orderId: order.id,
@@ -413,13 +448,28 @@ export const createNewOrder = (order: RentalOrder): void => {
       deliveryMethod: order.deliveryMethod
     }
   };
-  saveNotifications([newNotif, ...notifs]);
+  cachedNotifications = [newNotif, ...cachedNotifications];
+  window.dispatchEvent(new Event('pinjamlaptop_notifications_updated'));
+
+  // Sync to server API
+  fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(order)
+  }).catch(e => console.error('Error creating order on server:', e));
 };
 
 export const updateOrder = (updatedOrder: RentalOrder): void => {
-  const orders = getStoredOrders();
-  const nextOrders = orders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-  saveOrders(nextOrders);
+  cachedOrders = cachedOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
+
+  fetch(`/api/orders/${updatedOrder.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(updatedOrder)
+  }).catch(e => console.error('Error updating order on server:', e));
 };
 
 export const updateOrderStatus = (
@@ -430,16 +480,16 @@ export const updateOrderStatus = (
   message: string,
   extraUpdates?: Partial<RentalOrder>
 ): void => {
-  const orders = getStoredOrders();
-  const updated = orders.map(order => {
+  const newLog = {
+    id: `log-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    actor,
+    title,
+    message
+  };
+
+  cachedOrders = cachedOrders.map(order => {
     if (order.id === orderId) {
-      const newLog = {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        actor,
-        title,
-        message
-      };
       return {
         ...order,
         ...extraUpdates,
@@ -449,17 +499,22 @@ export const updateOrderStatus = (
     }
     return order;
   });
-  saveOrders(updated);
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
+
+  fetch(`/api/orders/${orderId}/status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ newStatus, actor, title, message, extraUpdates })
+  }).catch(e => console.error('Error updating order status on server:', e));
 };
 
 export const startOrderRental = (orderId: string): { success: boolean; message: string } => {
-  const orders = getStoredOrders();
-  const order = orders.find(o => o.id === orderId);
+  const order = cachedOrders.find(o => o.id === orderId);
   if (!order) return { success: false, message: 'Pesanan tidak ditemukan' };
 
   const now = new Date();
   const newStartDate = now.toISOString();
-  // Jam sewa resmi dihitung mundur mulai dari saat admin menekan tombol "Mulai Sewa"
   const newEndDate = new Date(now.getTime() + order.durationDays * 24 * 60 * 60 * 1000).toISOString();
 
   const formattedStartTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -475,7 +530,7 @@ export const startOrderRental = (orderId: string): { success: boolean; message: 
     message: `Admin telah menekan tombol "Mulai Sewa". Jam mulai sewa unit ${order.laptop.name} resmi berjalan mulai ${formattedStartDate} pukul ${formattedStartTime} WIB (saat menerima unit). Batas waktu pengembalian paling lambat adalah saat masa sewa habis: ${formattedEndDate} pukul ${formattedEndTime} WIB (${order.durationDays} hari, terhitung sejak jam yang sama saat menerima unit).`
   };
 
-  const updated = orders.map(o => {
+  cachedOrders = cachedOrders.map(o => {
     if (o.id === orderId) {
       return {
         ...o,
@@ -489,26 +544,13 @@ export const startOrderRental = (orderId: string): { success: boolean; message: 
     }
     return o;
   });
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
 
-  saveOrders(updated);
-
-  // Trigger notifikasi admin
-  const notifs = getStoredNotifications();
-  const startNotif: AdminNotification = {
-    id: `notif-${Date.now()}`,
-    orderId: order.id,
-    type: 'new_order_pickup',
-    title: `Jam Sewa Berjalan (${order.id})`,
-    message: `Admin telah mengaktifkan masa sewa laptop ${order.laptop.name} untuk ${order.customer.fullName}. Jam mulai: ${formattedStartTime} WIB, batas pengembalian: ${formattedEndDate} pukul ${formattedEndTime} WIB.`,
-    timestamp: now.toISOString(),
-    read: false,
-    orderRef: {
-      customerName: order.customer.fullName,
-      laptopName: order.laptop.name,
-      deliveryMethod: order.deliveryMethod
-    }
-  };
-  saveNotifications([startNotif, ...notifs]);
+  // Trigger server endpoint
+  fetch(`/api/orders/${orderId}/start-rental`, {
+    method: 'POST',
+    credentials: 'include'
+  }).catch(e => console.error('Error starting order rental on server:', e));
 
   return { 
     success: true, 
@@ -520,16 +562,16 @@ export const requestOrderReturnPickup = (
   orderId: string, 
   pickupReq: ReturnPickupRequest
 ): void => {
-  const orders = getStoredOrders();
-  const updated = orders.map(order => {
+  const newLog = {
+    id: `log-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    actor: 'customer' as const,
+    title: 'Permintaan Pick Up Pengembalian Diajukan',
+    message: `Penyewa meminta unit dijemput di: ${pickupReq.pickupAddress} pada ${pickupReq.preferredDate} (${pickupReq.preferredTimeSlot}).`
+  };
+
+  cachedOrders = cachedOrders.map(order => {
     if (order.id === orderId) {
-      const newLog = {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        actor: 'customer' as const,
-        title: 'Permintaan Pick Up Pengembalian Diajukan',
-        message: `Penyewa meminta unit dijemput di: ${pickupReq.pickupAddress} pada ${pickupReq.preferredDate} (${pickupReq.preferredTimeSlot}).`
-      };
       return {
         ...order,
         status: 'return_pickup_requested' as OrderStatus,
@@ -539,33 +581,18 @@ export const requestOrderReturnPickup = (
     }
     return order;
   });
-  saveOrders(updated);
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
 
-  // Trigger notifikasi admin
-  const order = orders.find(o => o.id === orderId);
-  if (order) {
-    const notifs = getStoredNotifications();
-    const returnNotif: AdminNotification = {
-      id: `notif-${Date.now()}`,
-      orderId: order.id,
-      type: 'return_pickup_request',
-      title: `Request Pick-up Pengembalian (${order.id})`,
-      message: `${order.customer.fullName} meminta penjemputan unit laptop ${order.laptop.name}. Harap jadwalkan kurir pick-up.`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      orderRef: {
-        customerName: order.customer.fullName,
-        laptopName: order.laptop.name,
-        deliveryMethod: order.deliveryMethod
-      }
-    };
-    saveNotifications([returnNotif, ...notifs]);
-  }
+  fetch(`/api/orders/${orderId}/return-pickup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(pickupReq)
+  }).catch(e => console.error('Error requesting return pickup on server:', e));
 };
 
 export const setSimulatedLateHours = (orderId: string, hours: number): void => {
-  const orders = getStoredOrders();
-  const updated = orders.map(order => {
+  cachedOrders = cachedOrders.map(order => {
     if (order.id === orderId) {
       return {
         ...order,
@@ -574,273 +601,89 @@ export const setSimulatedLateHours = (orderId: string, hours: number): void => {
     }
     return order;
   });
-  saveOrders(updated);
-};
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
 
-// Admin Notifications
-export const getStoredNotifications = (): AdminNotification[] => {
-  try {
-    const raw = localStorage.getItem(NOTIFICATIONS_KEY);
-    if (!raw) {
-      const initial = getInitialNotifications();
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(initial));
-      return initial;
-    }
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error reading notifications:', err);
-    return getInitialNotifications();
-  }
-};
-
-export const saveNotifications = (notifications: AdminNotification[]) => {
-  try {
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
-    window.dispatchEvent(new Event('pinjamlaptop_notifications_updated'));
-  } catch (err) {
-    console.error('Error saving notifications:', err);
-  }
-};
-
-export const markNotificationAsRead = (notifId: string): void => {
-  const notifs = getStoredNotifications();
-  const updated = notifs.map(n => n.id === notifId ? { ...n, read: true } : n);
-  saveNotifications(updated);
-};
-
-export const markAllNotificationsAsRead = (): void => {
-  const notifs = getStoredNotifications();
-  const updated = notifs.map(n => ({ ...n, read: true }));
-  saveNotifications(updated);
-};
-
-// Helpers for calculations
-export const formatRupiah = (amount: number): string => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0
-  }).format(amount);
-};
-
-export const calculateRentalPricing = (
-  laptop: Laptop,
-  durationDays: number,
-  deliveryMethod: 'self_pickup' | 'delivery',
-  guaranteeType: 'two_identities' | 'cash_deposit'
-) => {
-  let dailyRate = laptop.dailyPrice;
-  let subtotal = 0;
-  let discount = 0;
-
-  if (durationDays >= 30) {
-    // Tarif bulanan proporsional
-    const months = Math.floor(durationDays / 30);
-    const extraDays = durationDays % 30;
-    subtotal = (months * laptop.monthlyPrice) + (extraDays * laptop.dailyPrice * 0.7);
-    discount = (durationDays * laptop.dailyPrice) - subtotal;
-  } else if (durationDays >= 7) {
-    // Tarif mingguan proporsional
-    const weeks = Math.floor(durationDays / 7);
-    const extraDays = durationDays % 7;
-    subtotal = (weeks * laptop.weeklyPrice) + (extraDays * laptop.dailyPrice * 0.85);
-    discount = (durationDays * laptop.dailyPrice) - subtotal;
-  } else {
-    subtotal = durationDays * laptop.dailyPrice;
-    discount = 0;
-  }
-
-  const deliveryFee = deliveryMethod === 'delivery' ? 35000 : 0;
-  const depositFee = guaranteeType === 'cash_deposit' ? laptop.depositAmount : 0;
-  const totalPaid = Math.round(subtotal + deliveryFee + depositFee);
-
-  return {
-    dailyRate,
-    durationDays,
-    subtotalRental: Math.round(subtotal),
-    discount: Math.round(discount),
-    deliveryFee,
-    depositFee,
-    totalPaid
-  };
-};
-
-export const calculateOverdueAndLateFee = (order: RentalOrder) => {
-  const isStarted = Boolean(order.rentalStartedAt);
-
-  // Jika admin belum menekan tombol "Mulai Sewa", jam sewa belum berjalan dan denda belum aktif
-  if (!isStarted && order.status !== 'completed' && order.status !== 'forfeited_cancelled') {
-    const totalRemainingSeconds = order.durationDays * 24 * 3600;
-    const days = order.durationDays;
-    return {
-      isStarted: false,
-      isOverdue: false,
-      lateHours: 0,
-      lateFee: 0,
-      hourlyRate: order.laptop.lateFeePerHour || 20000,
-      remaining: { days, hours: 0, minutes: 0, seconds: 0, totalMs: totalRemainingSeconds * 1000 },
-      overdueElapsed: { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 }
-    };
-  }
-
-  const now = new Date();
-  const end = new Date(order.endDate);
-
-  // Periksa apakah ada simulasi keterlambatan manual untuk keperluan demo/testing
-  let diffMs = now.getTime() - end.getTime();
-  if (order.customLateHoursSimulated !== undefined && order.customLateHoursSimulated > 0) {
-    diffMs = order.customLateHoursSimulated * 60 * 60 * 1000;
-  } else if (order.customLateHoursSimulated === -2) {
-    // Simulasi sisa 2 jam (belum terlambat)
-    diffMs = -2 * 60 * 60 * 1000;
-  }
-
-  // DENDA BERJALAN SAAT MASA SEWA BERAKHIR:
-  // Keterlambatan aktif saat diffMs > 0 dan status belum selesai / hangus
-  const isOverdue = diffMs > 0 && order.status !== 'completed' && order.status !== 'forfeited_cancelled';
-
-  if (!isOverdue) {
-    const remainingMs = Math.max(0, -diffMs);
-    const totalRemainingSeconds = Math.floor(remainingMs / 1000);
-    const days = Math.floor(totalRemainingSeconds / (3600 * 24));
-    const hours = Math.floor((totalRemainingSeconds % (3600 * 24)) / 3600);
-    const minutes = Math.floor((totalRemainingSeconds % 3600) / 60);
-    const seconds = totalRemainingSeconds % 60;
-
-    return {
-      isStarted: isStarted,
-      isOverdue: false,
-      lateHours: 0,
-      lateFee: 0,
-      hourlyRate: order.laptop.lateFeePerHour || 20000,
-      remaining: { days, hours, minutes, seconds, totalMs: remainingMs },
-      overdueElapsed: { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 }
-    };
-  }
-
-  // Denda Berjalan Otomatis Saat Masa Sewa Berakhir (Rp 20.000 / jam berjalan)
-  const lateHoursExact = diffMs / (1000 * 60 * 60);
-  const lateHoursRounded = Math.max(1, Math.ceil(lateHoursExact));
-  const hourlyRate = order.laptop.lateFeePerHour || 20000;
-  const lateFee = lateHoursRounded * hourlyRate;
-
-  // Waktu Keterlambatan Berjalan Real-time (Hari, Jam, Menit, Detik)
-  const totalElapsedSeconds = Math.floor(diffMs / 1000);
-  const elapsedDays = Math.floor(totalElapsedSeconds / (3600 * 24));
-  const elapsedHours = Math.floor((totalElapsedSeconds % (3600 * 24)) / 3600);
-  const elapsedMinutes = Math.floor((totalElapsedSeconds % 3600) / 60);
-  const elapsedSeconds = totalElapsedSeconds % 60;
-
-  return {
-    isStarted: true,
-    isOverdue: true,
-    lateHours: lateHoursRounded,
-    lateFee,
-    hourlyRate,
-    remaining: { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 },
-    overdueElapsed: {
-      days: elapsedDays,
-      hours: elapsedHours,
-      minutes: elapsedMinutes,
-      seconds: elapsedSeconds,
-      totalMs: diffMs
-    }
-  };
+  fetch(`/api/orders/${orderId}/simulate-late`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ hours })
+  }).catch(e => console.error('Error setting simulated late hours on server:', e));
 };
 
 /* =========================================================================
-   DATABASE MEMBER & AUTHENTICATION (CUSTOMER MEMBER ACCOUNT)
+   ADMIN NOTIFICATIONS
    ========================================================================= */
 
-const MEMBERS_KEY = 'pinjamlaptop_members_v1';
-
-const getInitialMembers = (): CustomerMember[] => {
-  return [];
+export const getStoredNotifications = (): AdminNotification[] => {
+  return cachedNotifications;
 };
 
+export const saveNotifications = (notifications: AdminNotification[]) => {
+  cachedNotifications = notifications;
+  window.dispatchEvent(new Event('pinjamlaptop_notifications_updated'));
+};
+
+export const markNotificationAsRead = (notifId: string): void => {
+  cachedNotifications = cachedNotifications.map(n => n.id === notifId ? { ...n, read: true } : n);
+  window.dispatchEvent(new Event('pinjamlaptop_notifications_updated'));
+
+  fetch(`/api/admin/notifications/${notifId}/read`, {
+    method: 'POST',
+    credentials: 'include'
+  }).catch(e => console.error('Error marking notif read on server:', e));
+};
+
+export const markAllNotificationsAsRead = (): void => {
+  cachedNotifications = cachedNotifications.map(n => ({ ...n, read: true }));
+  window.dispatchEvent(new Event('pinjamlaptop_notifications_updated'));
+
+  fetch('/api/admin/notifications/read-all', {
+    method: 'POST',
+    credentials: 'include'
+  }).catch(e => console.error('Error marking all notifs read on server:', e));
+};
+
+/* =========================================================================
+   CUSTOMER MEMBER AUTHENTICATION & MANAGEMENT
+   ========================================================================= */
+
 export const getStoredMembers = (): CustomerMember[] => {
-  try {
-    const raw = localStorage.getItem(MEMBERS_KEY);
-    if (!raw) {
-      const initial = getInitialMembers();
-      localStorage.setItem(MEMBERS_KEY, JSON.stringify(initial));
-      return initial;
-    }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      // Hapus akun contoh lama jika masih tersimpan di local storage
-      const cleaned = parsed.filter((m: CustomerMember) => m.memberId !== 'budi_santoso' && m.memberId !== 'ratna_dewi');
-      if (cleaned.length !== parsed.length) {
-        localStorage.setItem(MEMBERS_KEY, JSON.stringify(cleaned));
-      }
-      return cleaned;
-    }
-    return [];
-  } catch (e) {
-    console.error('Error reading members:', e);
-    return getInitialMembers();
-  }
+  return cachedMembers;
 };
 
 export const saveStoredMembers = (members: CustomerMember[]): void => {
-  try {
-    localStorage.setItem(MEMBERS_KEY, JSON.stringify(members));
-    window.dispatchEvent(new Event('pinjamlaptop_members_updated'));
-  } catch (e) {
-    console.error('Error saving members:', e);
-  }
+  cachedMembers = members;
+  window.dispatchEvent(new Event('pinjamlaptop_members_updated'));
 };
 
-const CUSTOMER_SESSION_KEY = 'pinjamlaptop_customer_session';
-
 export const getStoredCustomerSession = (): CustomerMember | null => {
-  try {
-    const raw = localStorage.getItem(CUSTOMER_SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('Error reading customer session:', e);
-    return null;
-  }
+  return cachedCustomerSession;
 };
 
 export const setStoredCustomerSession = (member: CustomerMember | null): void => {
+  cachedCustomerSession = member;
+  window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
+};
+
+export const logoutCustomer = async (): Promise<void> => {
+  cachedCustomerSession = null;
+  window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
   try {
-    if (!member) {
-      localStorage.removeItem(CUSTOMER_SESSION_KEY);
-    } else {
-      localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(member));
-    }
-    window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
+    await fetch('/api/auth/customer/logout', { method: 'POST', credentials: 'include' });
   } catch (e) {
-    console.error('Error saving customer session:', e);
+    // silent
   }
 };
 
-export const logoutCustomer = (): void => {
-  setStoredCustomerSession(null);
-};
-
 export const getMemberById = (memberId: string): CustomerMember | undefined => {
-  const members = getStoredMembers();
-  return members.find(m => m.memberId.toLowerCase().trim() === memberId.toLowerCase().trim());
+  return cachedMembers.find(m => m.memberId.toLowerCase().trim() === memberId.toLowerCase().trim());
 };
 
-export const getMemberByIdOrContact = (identifier: string): CustomerMember | undefined => {
-  const members = getStoredMembers();
-  const clean = identifier.toLowerCase().trim();
-  const cleanPhone = identifier.replace(/[^0-9]/g, '');
-  return members.find(m => 
-    m.memberId.toLowerCase().trim() === clean ||
-    (m.email && m.email.toLowerCase().trim() === clean) ||
-    (m.phone && cleanPhone.length >= 8 && m.phone.replace(/[^0-9]/g, '') === cleanPhone)
-  );
-};
-
-export const authenticateMember = (
+export const authenticateMember = async (
   identifier: string, 
   password: string
-): { success: boolean; member?: CustomerMember; message: string } => {
+): Promise<{ success: boolean; member?: CustomerMember; message: string }> => {
   if (!identifier.trim()) {
     return { success: false, message: 'Silakan isi ID Member, Nomor HP, atau Email Anda.' };
   }
@@ -848,125 +691,82 @@ export const authenticateMember = (
     return { success: false, message: 'Silakan masukkan Password Anda.' };
   }
 
-  const member = getMemberByIdOrContact(identifier);
-  if (!member) {
-    return { 
-      success: false, 
-      message: `Akun "${identifier}" belum terdaftar. Silakan pilih tab "Daftar Penyewa Baru" untuk membuat akun.` 
-    };
+  try {
+    const res = await fetch('/api/auth/customer/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ identifier, password })
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.member) {
+      cachedCustomerSession = data.member;
+      window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
+      await syncOrdersFromServer();
+      return { success: true, member: data.member, message: data.message };
+    }
+    return { success: false, message: data.message || 'Gagal masuk akun' };
+  } catch (err) {
+    return { success: false, message: 'Gagal terhubung ke server. Periksa koneksi internet Anda.' };
   }
-
-  if (member.password !== password) {
-    return { 
-      success: false, 
-      message: 'Password salah. Silakan periksa kembali kata sandi Anda.' 
-    };
-  }
-
-  // Simpan sesi aktif penyewa
-  setStoredCustomerSession(member);
-
-  return { 
-    success: true, 
-    member, 
-    message: `Selamat datang kembali, ${member.fullName}! Anda berhasil masuk.` 
-  };
 };
 
-export const registerOrUpdateMember = (
+export const registerOrUpdateMember = async (
   memberData: Omit<CustomerMember, 'registeredAt' | 'totalRentals'> & {
     registeredAt?: string;
     totalRentals?: number;
   }
-): CustomerMember => {
-  const members = getStoredMembers();
-  const existingIndex = members.findIndex(
-    m => m.memberId.toLowerCase().trim() === memberData.memberId.toLowerCase().trim()
-  );
-
-  if (existingIndex >= 0) {
-    const existing = members[existingIndex];
-    const updatedMember: CustomerMember = {
-      ...existing,
-      ...memberData,
-      password: memberData.password || existing.password,
-      totalRentals: (existing.totalRentals || 0) + 1,
-      lastRentalDate: new Date().toISOString()
-    };
-    members[existingIndex] = updatedMember;
-    saveStoredMembers(members);
-    return updatedMember;
-  } else {
-    const newMember: CustomerMember = {
-      ...memberData,
-      password: memberData.password || '123456',
-      registeredAt: new Date().toISOString(),
-      lastRentalDate: new Date().toISOString(),
-      totalRentals: 1
-    };
-    members.unshift(newMember);
-    saveStoredMembers(members);
-    return newMember;
+): Promise<CustomerMember> => {
+  try {
+    const res = await fetch('/api/auth/customer/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(memberData)
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.member) {
+      cachedCustomerSession = data.member;
+      window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
+      await syncOrdersFromServer();
+      return data.member;
+    }
+  } catch (e) {
+    console.error('Error registering customer on server:', e);
   }
+
+  // Fallback local memory object
+  const fallback: CustomerMember = {
+    ...memberData,
+    password: '',
+    registeredAt: new Date().toISOString(),
+    totalRentals: 1
+  };
+  cachedCustomerSession = fallback;
+  window.dispatchEvent(new Event('pinjamlaptop_customer_session_updated'));
+  return fallback;
 };
 
 /* =========================================================================
-   PERPANJANGAN SEWA CUSTOMER & HARGA YANG BERLAKU
+   RENTAL EXTENSION & CANCELLATION
    ========================================================================= */
 
-export const calculateExtensionPricing = (
-  laptop: Laptop,
-  days: number
-): { ratePerDay: number; subtotal: number; discount: number; finalPrice: number } => {
-  if (days <= 0) {
-    return { ratePerDay: laptop.dailyPrice, subtotal: 0, discount: 0, finalPrice: 0 };
-  }
-
-  let finalPrice = 0;
-  let normalSubtotal = days * laptop.dailyPrice;
-
-  if (days >= 30) {
-    const months = Math.floor(days / 30);
-    const extraDays = days % 30;
-    finalPrice = (months * laptop.monthlyPrice) + Math.round(extraDays * laptop.dailyPrice * 0.7);
-  } else if (days >= 7) {
-    const weeks = Math.floor(days / 7);
-    const extraDays = days % 7;
-    finalPrice = (weeks * laptop.weeklyPrice) + Math.round(extraDays * laptop.dailyPrice * 0.85);
-  } else {
-    finalPrice = days * laptop.dailyPrice;
-  }
-
-  finalPrice = Math.round(finalPrice);
-  const discount = Math.max(0, normalSubtotal - finalPrice);
-  const ratePerDay = Math.round(finalPrice / days);
-
-  return {
-    ratePerDay,
-    subtotal: normalSubtotal,
-    discount,
-    finalPrice
-  };
-};
-
-export const extendOrderRental = (
+export const extendOrderRental = async (
   orderId: string,
   additionalDays: number,
   extensionFee: number,
   paymentMethod: string,
   adminNotes?: string,
   adminName: string = 'Hendra Wijaya (Admin Operasional)'
-): { success: boolean; message: string; updatedOrder?: RentalOrder } => {
-  const orders = getStoredOrders();
-  const index = orders.findIndex(o => o.id === orderId);
+): Promise<{ success: boolean; message: string; updatedOrder?: RentalOrder }> => {
+  const index = cachedOrders.findIndex(o => o.id === orderId);
   if (index === -1) {
     return { success: false, message: `Pesanan ${orderId} tidak ditemukan.` };
   }
 
-  const order = orders[index];
+  const order = cachedOrders[index];
   const prevEndDate = order.endDate;
   const currentEnd = new Date(prevEndDate);
-  // Tambahkan durasi perpanjangan
   const newEnd = new Date(currentEnd.getTime() + additionalDays * 24 * 60 * 60 * 1000);
   const newEndDateStr = newEnd.toISOString();
 
@@ -1008,26 +808,20 @@ export const extendOrderRental = (
     logs: [...order.logs, newLog]
   };
 
-  orders[index] = updatedOrder;
-  saveOrders(orders);
+  cachedOrders[index] = updatedOrder;
+  window.dispatchEvent(new Event('pinjamlaptop_orders_updated'));
 
-  // Kirim notifikasi log admin
-  const notifs = getStoredNotifications();
-  const notif: AdminNotification = {
-    id: `notif-ext-${Date.now()}`,
-    orderId: order.id,
-    type: 'new_order_pickup',
-    title: `Perpanjangan Sewa Unit ${order.laptop.name}`,
-    message: `Pesanan ${order.id} an. ${order.customer.fullName} diperpanjang +${additionalDays} hari. Pembayaran perpanjangan ${formatRupiah(extensionFee)} masuk.`,
-    timestamp: new Date().toISOString(),
-    read: false,
-    orderRef: {
-      customerName: order.customer.fullName,
-      laptopName: order.laptop.name,
-      deliveryMethod: order.deliveryMethod
-    }
-  };
-  saveNotifications([notif, ...notifs]);
+  // Sync to server API
+  try {
+    await fetch(`/api/orders/${orderId}/extend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ additionalDays, extensionFee, paymentMethod, adminNotes })
+    });
+  } catch (e) {
+    console.error('Error extending order on server:', e);
+  }
 
   return { 
     success: true, 
@@ -1036,19 +830,18 @@ export const extendOrderRental = (
   };
 };
 
-export const rejectAndCancelOrder = (
+export const rejectAndCancelOrder = async (
   orderId: string,
   reason: string,
   forfeitFunds: boolean,
   adminName: string = 'Hendra Wijaya (Admin Operasional)'
-): { success: boolean; message: string } => {
-  const orders = getStoredOrders();
-  const index = orders.findIndex(o => o.id === orderId);
+): Promise<{ success: boolean; message: string }> => {
+  const index = cachedOrders.findIndex(o => o.id === orderId);
   if (index === -1) {
     return { success: false, message: `Pesanan ${orderId} tidak ditemukan.` };
   }
 
-  const order = orders[index];
+  const order = cachedOrders[index];
   const targetStatus: OrderStatus = 'forfeited_cancelled';
 
   const logTitle = forfeitFunds 
@@ -1071,6 +864,17 @@ export const rejectAndCancelOrder = (
     }
   );
 
+  try {
+    await fetch(`/api/orders/${orderId}/cancel-reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ reason, forfeitFunds })
+    });
+  } catch (e) {
+    console.error('Error canceling order on server:', e);
+  }
+
   return { 
     success: true, 
     message: forfeitFunds 
@@ -1080,13 +884,233 @@ export const rejectAndCancelOrder = (
 };
 
 /* =========================================================================
-   NERACA KEUANGAN YANG MASUK (FINANCIAL BALANCE SHEET & CASH INFLOW LEDGER)
+   ADMIN SESSION & AUTHENTICATION
    ========================================================================= */
+
+export const getStoredAdminSession = (): AdminUserSession | null => {
+  return cachedAdminSession;
+};
+
+export const saveAdminSession = (session: AdminUserSession | null): void => {
+  cachedAdminSession = session;
+  window.dispatchEvent(new Event('pinjamlaptop_admin_auth_updated'));
+};
+
+export const loginAdmin = async (
+  usernameInput: string,
+  passwordInput: string
+): Promise<{ success: boolean; message: string; session?: AdminUserSession }> => {
+  const username = usernameInput.toLowerCase().trim();
+  const password = passwordInput.trim();
+
+  try {
+    const res = await fetch('/api/auth/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success && data.session) {
+      cachedAdminSession = data.session;
+      window.dispatchEvent(new Event('pinjamlaptop_admin_auth_updated'));
+      // Sync fresh admin data
+      await syncOrdersFromServer();
+      await syncNotificationsFromServer();
+      await syncMembersFromServer();
+      return { success: true, message: data.message, session: data.session };
+    }
+
+    return {
+      success: false,
+      message: data.message || 'ID Administrator atau Kata Sandi salah.'
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: 'Gagal terhubung ke server Express. Pastikan server sedang berjalan.'
+    };
+  }
+};
+
+export const logoutAdmin = async (): Promise<void> => {
+  cachedAdminSession = null;
+  window.dispatchEvent(new Event('pinjamlaptop_admin_auth_updated'));
+  try {
+    await fetch('/api/auth/admin/logout', { method: 'POST', credentials: 'include' });
+  } catch (e) {
+    // silent
+  }
+};
+
+/* =========================================================================
+   CALCULATION HELPERS
+   ========================================================================= */
+
+export const formatRupiah = (amount: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+export const calculateRentalPricing = (
+  laptop: Laptop,
+  durationDays: number,
+  deliveryMethod: 'self_pickup' | 'delivery',
+  guaranteeType: 'two_identities' | 'cash_deposit'
+) => {
+  let dailyRate = laptop.dailyPrice;
+  let subtotal = 0;
+  let discount = 0;
+
+  if (durationDays >= 30) {
+    const months = Math.floor(durationDays / 30);
+    const extraDays = durationDays % 30;
+    subtotal = (months * laptop.monthlyPrice) + (extraDays * laptop.dailyPrice * 0.7);
+    discount = (durationDays * laptop.dailyPrice) - subtotal;
+  } else if (durationDays >= 7) {
+    const weeks = Math.floor(durationDays / 7);
+    const extraDays = durationDays % 7;
+    subtotal = (weeks * laptop.weeklyPrice) + (extraDays * laptop.dailyPrice * 0.85);
+    discount = (durationDays * laptop.dailyPrice) - subtotal;
+  } else {
+    subtotal = durationDays * laptop.dailyPrice;
+    discount = 0;
+  }
+
+  const deliveryFee = deliveryMethod === 'delivery' ? 35000 : 0;
+  const depositFee = guaranteeType === 'cash_deposit' ? laptop.depositAmount : 0;
+  const totalPaid = Math.round(subtotal + deliveryFee + depositFee);
+
+  return {
+    dailyRate,
+    durationDays,
+    subtotalRental: Math.round(subtotal),
+    discount: Math.round(discount),
+    deliveryFee,
+    depositFee,
+    totalPaid
+  };
+};
+
+export const calculateOverdueAndLateFee = (order: RentalOrder) => {
+  const isStarted = Boolean(order.rentalStartedAt);
+
+  if (!isStarted && order.status !== 'completed' && order.status !== 'forfeited_cancelled') {
+    const totalRemainingSeconds = order.durationDays * 24 * 3600;
+    const days = order.durationDays;
+    return {
+      isStarted: false,
+      isOverdue: false,
+      lateHours: 0,
+      lateFee: 0,
+      hourlyRate: order.laptop.lateFeePerHour || 20000,
+      remaining: { days, hours: 0, minutes: 0, seconds: 0, totalMs: totalRemainingSeconds * 1000 },
+      overdueElapsed: { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 }
+    };
+  }
+
+  const now = new Date();
+  const end = new Date(order.endDate);
+
+  let diffMs = now.getTime() - end.getTime();
+  if (order.customLateHoursSimulated !== undefined && order.customLateHoursSimulated > 0) {
+    diffMs = order.customLateHoursSimulated * 60 * 60 * 1000;
+  } else if (order.customLateHoursSimulated === -2) {
+    diffMs = -2 * 60 * 60 * 1000;
+  }
+
+  const isOverdue = diffMs > 0 && order.status !== 'completed' && order.status !== 'forfeited_cancelled';
+
+  if (!isOverdue) {
+    const remainingMs = Math.max(0, -diffMs);
+    const totalRemainingSeconds = Math.floor(remainingMs / 1000);
+    const days = Math.floor(totalRemainingSeconds / (3600 * 24));
+    const hours = Math.floor((totalRemainingSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((totalRemainingSeconds % 3600) / 60);
+    const seconds = totalRemainingSeconds % 60;
+
+    return {
+      isStarted: isStarted,
+      isOverdue: false,
+      lateHours: 0,
+      lateFee: 0,
+      hourlyRate: order.laptop.lateFeePerHour || 20000,
+      remaining: { days, hours, minutes, seconds, totalMs: remainingMs },
+      overdueElapsed: { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 }
+    };
+  }
+
+  const lateHoursExact = diffMs / (1000 * 60 * 60);
+  const lateHoursRounded = Math.max(1, Math.ceil(lateHoursExact));
+  const hourlyRate = order.laptop.lateFeePerHour || 20000;
+  const lateFee = lateHoursRounded * hourlyRate;
+
+  const totalElapsedSeconds = Math.floor(diffMs / 1000);
+  const elapsedDays = Math.floor(totalElapsedSeconds / (3600 * 24));
+  const elapsedHours = Math.floor((totalElapsedSeconds % (3600 * 24)) / 3600);
+  const elapsedMinutes = Math.floor((totalElapsedSeconds % 3600) / 60);
+  const elapsedSeconds = totalElapsedSeconds % 60;
+
+  return {
+    isStarted: true,
+    isOverdue: true,
+    lateHours: lateHoursRounded,
+    lateFee,
+    hourlyRate,
+    remaining: { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0 },
+    overdueElapsed: {
+      days: elapsedDays,
+      hours: elapsedHours,
+      minutes: elapsedMinutes,
+      seconds: elapsedSeconds,
+      totalMs: diffMs
+    }
+  };
+};
+
+export const calculateExtensionPricing = (
+  laptop: Laptop,
+  days: number
+): { ratePerDay: number; subtotal: number; discount: number; finalPrice: number } => {
+  if (days <= 0) {
+    return { ratePerDay: laptop.dailyPrice, subtotal: 0, discount: 0, finalPrice: 0 };
+  }
+
+  let finalPrice = 0;
+  let normalSubtotal = days * laptop.dailyPrice;
+
+  if (days >= 30) {
+    const months = Math.floor(days / 30);
+    const extraDays = days % 30;
+    finalPrice = (months * laptop.monthlyPrice) + Math.round(extraDays * laptop.dailyPrice * 0.7);
+  } else if (days >= 7) {
+    const weeks = Math.floor(days / 7);
+    const extraDays = days % 7;
+    finalPrice = (weeks * laptop.weeklyPrice) + Math.round(extraDays * laptop.dailyPrice * 0.85);
+  } else {
+    finalPrice = days * laptop.dailyPrice;
+  }
+
+  finalPrice = Math.round(finalPrice);
+  const discount = Math.max(0, normalSubtotal - finalPrice);
+  const ratePerDay = Math.round(finalPrice / days);
+
+  return {
+    ratePerDay,
+    subtotal: normalSubtotal,
+    discount,
+    finalPrice
+  };
+};
 
 export const getFinancialLedgerData = (
   ordersList?: RentalOrder[]
 ): { items: FinancialInflowItem[]; summary: FinancialLedgerSummary } => {
-  const orders = ordersList || getStoredOrders();
+  const orders = ordersList || cachedOrders;
   const items: FinancialInflowItem[] = [];
 
   let grossInflow = 0;
@@ -1099,9 +1123,7 @@ export const getFinancialLedgerData = (
   let lateFeesCollected = 0;
 
   orders.forEach((order) => {
-    // 1. Arus Kas Pembayaran Sewa Awal
     if (order.status === 'forfeited_cancelled' && order.paymentStatus === 'forfeited') {
-      // Dana Hangus 100%
       grossInflow += order.pricing.totalPaid;
       forfeitedRevenue += order.pricing.totalPaid;
 
@@ -1119,7 +1141,6 @@ export const getFinancialLedgerData = (
         notes: order.cancellationReason || 'Identitas tidak valid/fiktif'
       });
     } else {
-      // Pembayaran Sewa Normal
       const baseRental = order.pricing.subtotalRental - (order.extensions?.reduce((sum, ext) => sum + ext.extensionFee, 0) || 0);
       grossInflow += baseRental;
       netRentalRevenue += baseRental;
@@ -1138,7 +1159,6 @@ export const getFinancialLedgerData = (
         notes: `Durasi awal ${order.durationDays - (order.extensions?.reduce((s, e) => s + e.additionalDays, 0) || 0)} hari`
       });
 
-      // Ongkir Kurir jika ada
       if (order.pricing.deliveryFee > 0) {
         grossInflow += order.pricing.deliveryFee;
         deliveryFeesCollected += order.pricing.deliveryFee;
@@ -1158,7 +1178,6 @@ export const getFinancialLedgerData = (
         });
       }
 
-      // Uang Deposit jika ada
       if (order.pricing.depositFee > 0) {
         grossInflow += order.pricing.depositFee;
 
@@ -1196,7 +1215,6 @@ export const getFinancialLedgerData = (
       }
     }
 
-    // 2. Arus Kas Perpanjangan Sewa (Jika ada)
     if (order.extensions && order.extensions.length > 0) {
       order.extensions.forEach((ext) => {
         grossInflow += ext.extensionFee;
@@ -1219,7 +1237,6 @@ export const getFinancialLedgerData = (
       });
     }
 
-    // 3. Denda Keterlambatan (Jika dihitung)
     const overdue = calculateOverdueAndLateFee(order);
     if (overdue.isOverdue && overdue.lateFee > 0) {
       lateFeesCollected += overdue.lateFee;
@@ -1239,7 +1256,6 @@ export const getFinancialLedgerData = (
     }
   });
 
-  // Urutkan dari transaksi terbaru
   items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const summary: FinancialLedgerSummary = {
@@ -1255,109 +1271,4 @@ export const getFinancialLedgerData = (
   };
 
   return { items, summary };
-};
-
-/* =========================================================================
-   AKSES MASUK ADMINISTRATOR (ADMIN AUTHENTICATION SESSION)
-   ========================================================================= */
-
-const ADMIN_SESSION_KEY = 'pinjamlaptop_admin_session_v2';
-
-export const getStoredAdminSession = (): AdminUserSession | null => {
-  try {
-    const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-    if (!raw) return null;
-    const session = JSON.parse(raw);
-    if (session && session.isAuthenticated) {
-      return session;
-    }
-    return null;
-  } catch (err) {
-    console.error('Error getting admin session:', err);
-    return null;
-  }
-};
-
-export const saveAdminSession = (session: AdminUserSession | null): void => {
-  try {
-    if (session) {
-      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-    } else {
-      localStorage.removeItem(ADMIN_SESSION_KEY);
-    }
-    window.dispatchEvent(new Event('pinjamlaptop_admin_auth_updated'));
-  } catch (err) {
-    console.error('Error saving admin session:', err);
-  }
-};
-
-export const loginAdmin = (
-  usernameInput: string,
-  passwordInput: string
-): { success: boolean; message: string; session?: AdminUserSession } => {
-  const username = usernameInput.toLowerCase().trim();
-  const password = passwordInput.trim();
-
-  // Validasi akun utama Petugas & Admin PINJAMLAPTOP.ID
-  if (username === 'pinjamlaptopid' && password === 'TBIB20') {
-    const session: AdminUserSession = {
-      isAuthenticated: true,
-      adminId: 'ADM-PL-001',
-      name: 'Petugas Administrator',
-      role: 'super_admin',
-      roleTitle: 'Petugas Operasional & Pengelola Katalog',
-      loginTime: new Date().toISOString()
-    };
-    saveAdminSession(session);
-    return { success: true, message: 'Akses masuk Petugas berhasil diverifikasi!', session };
-  }
-
-  // Validasi akun administrator resmi Pinjamlaptop
-  if ((username === 'admin' || username === 'admin_pinjamlaptop') && (password === 'admin123' || password === 'admin')) {
-    const session: AdminUserSession = {
-      isAuthenticated: true,
-      adminId: 'ADM-001',
-      name: 'Hendra Wijaya, S.Kom',
-      role: 'super_admin',
-      roleTitle: 'Chief Operations & Systems Admin',
-      loginTime: new Date().toISOString()
-    };
-    saveAdminSession(session);
-    return { success: true, message: 'Akses masuk Administrator berhasil!', session };
-  }
-
-  if (username === 'finance' && (password === 'keuangan123' || password === 'finance123')) {
-    const session: AdminUserSession = {
-      isAuthenticated: true,
-      adminId: 'ADM-FIN-002',
-      name: 'Siti Rahmania, S.E.',
-      role: 'finance_admin',
-      roleTitle: 'Head of Billing & Financial Ledger',
-      loginTime: new Date().toISOString()
-    };
-    saveAdminSession(session);
-    return { success: true, message: 'Akses masuk Administrator Keuangan berhasil!', session };
-  }
-
-  if (username === 'ops' && password === 'ops123') {
-    const session: AdminUserSession = {
-      isAuthenticated: true,
-      adminId: 'ADM-OPS-003',
-      name: 'Bambang Pratama',
-      role: 'ops_admin',
-      roleTitle: 'Senior Fleet & Hub Coordinator',
-      loginTime: new Date().toISOString()
-    };
-    saveAdminSession(session);
-    return { success: true, message: 'Akses masuk Administrator Operasional berhasil!', session };
-  }
-
-  return {
-    success: false,
-    message: 'Username / ID Admin atau Password salah. Silakan periksa kembali atau gunakan akun demo yang tersedia.'
-  };
-};
-
-export const logoutAdmin = (): void => {
-  saveAdminSession(null);
 };

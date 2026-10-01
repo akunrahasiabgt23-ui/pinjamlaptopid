@@ -63,14 +63,14 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   if (!isOpen) return null;
 
   // Handle Login Submit
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
     setLoginSuccessMessage(null);
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const result = authenticateMember(loginIdentifier, loginPassword);
+    try {
+      const result = await authenticateMember(loginIdentifier, loginPassword);
       setIsSubmitting(false);
 
       if (result.success && result.member) {
@@ -85,11 +85,14 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       } else {
         setLoginError(result.message);
       }
-    }, 400);
+    } catch (err) {
+      setIsSubmitting(false);
+      setLoginError('Terjadi kesalahan verifikasi pada server.');
+    }
   };
 
   // Handle Register Submit
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegError(null);
 
@@ -116,7 +119,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
       const cleanPhone = regPhone.replace(/[^0-9]/g, '');
       const memberId = `PLM-${cleanPhone.slice(-6) || Math.floor(100000 + Math.random() * 900000)}`;
 
@@ -133,7 +136,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
         totalRentals: 0
       };
 
-      const saved = registerOrUpdateMember(newMember);
+      const saved = await registerOrUpdateMember(newMember);
       setStoredCustomerSession(saved);
       setCurrentCustomer(saved);
       setIsSubmitting(false);
@@ -146,7 +149,10 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       setTimeout(() => {
         onClose();
       }, 1500);
-    }, 500);
+    } catch (err) {
+      setIsSubmitting(false);
+      setRegError('Gagal mendaftarkan akun di server.');
+    }
   };
 
   // Handle Logout

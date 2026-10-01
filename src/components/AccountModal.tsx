@@ -195,8 +195,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             </div>
           </div>
 
-          {/* Section Akses Administrator: Tampil jika Admin Sedang Terautentikasi */}
-          {isAdminAuthenticated && (
+          {/* Section Akses Administrator */}
+          {isAdminAuthenticated ? (
             <div className="pt-2 border-t border-slate-100">
               <button
                 type="button"
@@ -218,27 +218,35 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
-          )}
-
-          {/* Footer - Hak Cipta & Gerbang Login Petugas Khusus */}
-          <div className="pt-4 border-t border-slate-100 text-center">
-            {isAdminAuthenticated ? (
-              <p className="text-[11px] text-slate-400 select-none">
-                © 2026 PINJAMLAPTOP.ID • Mode Administrator Aktif
-              </p>
-            ) : (
+          ) : (
+            <div className="pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onOpenAdminLogin();
                 }}
-                className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer select-none"
-                title="Khusus Petugas / Administrator Resmi"
+                className="w-full p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-between transition-colors cursor-pointer group"
               >
-                © 2026 PINJAMLAPTOP.ID • Portal Petugas
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+                    <Lock className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-xs">Akses Masuk Petugas & Admin</div>
+                    <div className="text-[10px] text-slate-500">Kelola katalog, verifikasi pesanan, serah terima unit</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
-            )}
+            </div>
+          )}
+
+          {/* Footer - Hak Cipta */}
+          <div className="pt-3 border-t border-slate-100 text-center">
+            <p className="text-[11px] text-slate-400 select-none">
+              © 2026 PINJAMLAPTOP.ID • Sistem Persewaan Laptop Terpercaya
+            </p>
           </div>
         </div>
       </div>

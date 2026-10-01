@@ -29,7 +29,7 @@ export const RejectOrderModal: React.FC<RejectOrderModalProps> = ({
 
   const finalReason = customReason.trim() ? customReason.trim() : reasonPreset;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!finalReason) {
       alert('Silakan pilih atau masukkan alasan penolakan pesanan.');
@@ -39,7 +39,7 @@ export const RejectOrderModal: React.FC<RejectOrderModalProps> = ({
     const isForfeit = rejectType === 'forfeit_100';
 
     setIsSubmitting(true);
-    const res = rejectAndCancelOrder(order.id, finalReason, isForfeit, adminName);
+    const res = await rejectAndCancelOrder(order.id, finalReason, isForfeit, adminName);
     setIsSubmitting(false);
 
     if (res.success) {
