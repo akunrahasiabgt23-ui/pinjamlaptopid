@@ -230,21 +230,9 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
 
   return (
     <div className="space-y-5 sm:space-y-6 pb-20">
-      {/* 3 Tombol Cabang Kota di Atas Tombol Search */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-600" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Pilih Cabang Pinjam Laptop
-            </span>
-          </div>
-          <span className="text-[11px] text-slate-500 font-medium">
-            Katalog sesuai ketersediaan unit di cabang kota
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      {/* Switcher Cabang Kota (Minimalis & Mobile Friendly) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 overflow-x-auto scrollbar-none">
           {BRANCH_LOCATIONS.map((loc) => {
             const isSelected = selectedBranch === loc.city;
             const count = branchCounts[loc.city] || 0;
@@ -255,211 +243,116 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
                 type="button"
                 id={`btn-branch-${loc.city.toLowerCase()}`}
                 onClick={() => setSelectedBranch(loc.city)}
-                className={`relative px-3 py-2.5 sm:py-3 rounded-2xl border transition-all text-left flex flex-col justify-between cursor-pointer ${
+                className={`flex-1 min-w-[95px] py-2 px-3 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
                   isSelected
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-200'
-                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 shadow-2xs'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
                 }`}
               >
-                <div className="flex items-center justify-between w-full mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-100' : 'text-blue-600'}`} />
-                    <span className="font-extrabold text-xs sm:text-sm tracking-tight">
-                      {loc.city}
-                    </span>
-                  </div>
-                  {loc.isPusat && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase ${
-                      isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      Pusat
-                    </span>
-                  )}
-                </div>
+                <Building2 className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-blue-600'}`} />
+                <span>{loc.city}</span>
+                {loc.isPusat ? (
+                  <span className={`text-[8px] font-black px-1 rounded uppercase ${isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800'}`}>
+                    Pusat
+                  </span>
+                ) : (
+                  <span className={`text-[10px] font-normal ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                    ({count})
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setSelectedBranch('Semua')}
+            className={`py-2 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              selectedBranch === 'Semua'
+                ? 'bg-blue-600 text-white shadow-xs font-bold'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/80'
+            }`}
+          >
+            Semua ({laptops.length})
+          </button>
+        </div>
 
-                <div className="flex items-center justify-between w-full text-[10px] sm:text-xs">
-                  <span className={isSelected ? 'text-blue-100' : 'text-slate-500'}>
-                    {count} Unit Siap
-                  </span>
-                  <span className={`font-semibold ${isSelected ? 'text-white' : 'text-blue-600'}`}>
-                    {isSelected ? '✓ Aktif' : 'Pilih'}
-                  </span>
-                </div>
+        {/* Info Singkat Domisili */}
+        <div className="flex items-center justify-between px-1 text-[11px] text-slate-500">
+          <span className="truncate">
+            📍 {selectedBranch === 'Malang' && 'Melayani Malang Kota, Kab & Batu'}
+            {selectedBranch === 'Sidoarjo' && 'Melayani Sidoarjo & Surabaya'}
+            {selectedBranch === 'Bekasi' && 'Melayani Bekasi & Semua Jakarta'}
+            {selectedBranch === 'Semua' && 'Semua unit di seluruh cabang'}
+          </span>
+          <span className="font-semibold text-blue-600 shrink-0 ml-2">
+            {filteredLaptops.length} Unit
+          </span>
+        </div>
+      </div>
+
+      {/* Search Bar & Kategori Horizontal (Mobile-First Pill Carousel) */}
+      <div className="space-y-2.5">
+        <div className="relative w-full">
+          <input
+            type="text"
+            placeholder="Cari merk atau tipe laptop..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-4 pr-12 py-2.5 rounded-full border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-2xs transition-all"
+          />
+          <button
+            type="button"
+            aria-label="Cari"
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center justify-center shadow-xs transition-all cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Category Horizontal Swipeable Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x">
+          {[
+            { id: 'Semua', label: `Semua (${laptops.length})`, icon: LayoutGrid },
+            { id: 'Office', label: 'Office', icon: OfficeIcon },
+            { id: 'Student', label: 'Student', icon: GraduationCap },
+            { id: 'Creator', label: 'Creator', icon: CreatorIcon },
+            { id: 'Gaming', label: 'Gaming', icon: Gamepad2 },
+            { id: 'Performance', label: 'Performance', icon: Gauge },
+          ].map((cat) => {
+            const isSelected = selectedCategory === cat.id && !searchQuery.trim();
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                id={`cat-${cat.id.toLowerCase()}`}
+                onClick={() => setSelectedCategory(cat.id as any)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer shrink-0 snap-start ${
+                  isSelected
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
+                <span>{cat.label}</span>
               </button>
             );
           })}
         </div>
-
-        {/* Info Banner Cabang Terpilih & Syarat Domisili */}
-        <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-slate-900">
-              Cabang {selectedBranch} {selectedBranch === 'Malang' ? '(Pusat Pinjam Laptop)' : ''}:
-            </span>
-            <span>
-              {selectedBranch === 'Malang' && 'Melayani domisili Malang Kota, Malang Kabupaten & Kota Batu.'}
-              {selectedBranch === 'Sidoarjo' && 'Melayani domisili Sidoarjo & Surabaya.'}
-              {selectedBranch === 'Bekasi' && 'Melayani domisili Bekasi Kota/Kabupaten & Semua Jakarta.'}
-            </span>
-          </div>
-          {selectedBranch !== 'Semua' && (
-            <button
-              type="button"
-              onClick={() => setSelectedBranch('Semua')}
-              className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold underline cursor-pointer"
-            >
-              Tampilkan Semua Cabang ({laptops.length})
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Search Bar - Exactly matching the pill shape with blue circle button */}
-      <div className="relative w-full">
-        <input
-          type="text"
-          placeholder="Cari tipe laptop, merk, atau spesifikasi unit..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-5 pr-14 py-3 rounded-full border border-slate-300 bg-white text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-2xs transition-all"
-        />
-        <button
-          type="button"
-          onClick={() => {}}
-          aria-label="Cari"
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center justify-center shadow-xs transition-all cursor-pointer"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Category Icons Selector - Grid of 6 options (Semua + 5 Tema) */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-        {/* Category 0: Semua */}
-        <button
-          type="button"
-          id="cat-semua"
-          onClick={() => setSelectedCategory('Semua')}
-          className={`rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer ${
-            selectedCategory === 'Semua' && !searchQuery.trim()
-              ? 'bg-blue-50/80 border border-blue-400 text-blue-600 font-bold shadow-2xs'
-              : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 font-medium'
-          }`}
-        >
-          <LayoutGrid className={`w-6 h-6 sm:w-7 sm:h-7 ${selectedCategory === 'Semua' && !searchQuery.trim() ? 'text-blue-600' : 'text-slate-700'}`} />
-          <span className="text-xs sm:text-sm">Semua (100)</span>
-        </button>
-
-        {/* Category 1: Office */}
-        <button
-          type="button"
-          id="cat-office"
-          onClick={() => setSelectedCategory('Office')}
-          className={`rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer ${
-            selectedCategory === 'Office' && !searchQuery.trim()
-              ? 'bg-blue-50/80 border border-blue-400 text-blue-600 font-bold shadow-2xs'
-              : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 font-medium'
-          }`}
-        >
-          <OfficeIcon className={`w-6 h-6 sm:w-7 sm:h-7 ${selectedCategory === 'Office' && !searchQuery.trim() ? 'text-blue-600' : 'text-slate-700'}`} />
-          <span className="text-xs sm:text-sm">Office</span>
-        </button>
-
-        {/* Category 2: Student */}
-        <button
-          type="button"
-          id="cat-student"
-          onClick={() => setSelectedCategory('Student')}
-          className={`rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer ${
-            selectedCategory === 'Student' && !searchQuery.trim()
-              ? 'bg-blue-50/80 border border-blue-400 text-blue-600 font-bold shadow-2xs'
-              : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 font-medium'
-          }`}
-        >
-          <GraduationCap className={`w-6 h-6 sm:w-7 sm:h-7 ${selectedCategory === 'Student' && !searchQuery.trim() ? 'text-blue-600 stroke-[2.2]' : 'text-slate-700 stroke-[1.8]'}`} />
-          <span className="text-xs sm:text-sm">Student</span>
-        </button>
-
-        {/* Category 3: Creator */}
-        <button
-          type="button"
-          id="cat-creator"
-          onClick={() => setSelectedCategory('Creator')}
-          className={`rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer ${
-            selectedCategory === 'Creator' && !searchQuery.trim()
-              ? 'bg-blue-50/80 border border-blue-400 text-blue-600 font-bold shadow-2xs'
-              : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 font-medium'
-          }`}
-        >
-          <CreatorIcon className={`w-6 h-6 sm:w-7 sm:h-7 ${selectedCategory === 'Creator' && !searchQuery.trim() ? 'text-blue-600' : 'text-slate-700'}`} />
-          <span className="text-xs sm:text-sm">Creator</span>
-        </button>
-
-        {/* Category 4: Gaming */}
-        <button
-          type="button"
-          id="cat-gaming"
-          onClick={() => setSelectedCategory('Gaming')}
-          className={`rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer ${
-            selectedCategory === 'Gaming' && !searchQuery.trim()
-              ? 'bg-blue-50/80 border border-blue-400 text-blue-600 font-bold shadow-2xs'
-              : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 font-medium'
-          }`}
-        >
-          <Gamepad2 className={`w-6 h-6 sm:w-7 sm:h-7 ${selectedCategory === 'Gaming' && !searchQuery.trim() ? 'text-blue-600 stroke-[2.2]' : 'text-slate-700 stroke-[1.8]'}`} />
-          <span className="text-xs sm:text-sm">Gaming</span>
-        </button>
-
-        {/* Category 5: Performance */}
-        <button
-          type="button"
-          id="cat-performance"
-          onClick={() => setSelectedCategory('Performance')}
-          className={`rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer ${
-            selectedCategory === 'Performance' && !searchQuery.trim()
-              ? 'bg-blue-50/80 border border-blue-400 text-blue-600 font-bold shadow-2xs'
-              : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 font-medium'
-          }`}
-        >
-          <Gauge className={`w-6 h-6 sm:w-7 sm:h-7 ${selectedCategory === 'Performance' && !searchQuery.trim() ? 'text-blue-600 stroke-[2.2]' : 'text-slate-700 stroke-[1.8]'}`} />
-          <span className="text-xs sm:text-sm">Performance</span>
-        </button>
-      </div>
-
-      {/* Filter & Sort Bar - Khusus Sortir & Filter Harga */}
-      <div id="filter-sort-price-section" className="bg-slate-50/90 rounded-2xl border border-slate-200 p-3 sm:p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          {/* Info Jumlah Unit & Status Filter */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-100/80 text-blue-600 flex items-center justify-center shrink-0">
-              <SlidersHorizontal className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-800">Filter & Sortir Produk</span>
-                {(priceRange !== 'all' || sortBy !== 'default') && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[9px] font-bold">
-                    Filter Aktif
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Menampilkan <strong className="text-slate-800 font-bold">{filteredLaptops.length}</strong> unit laptop
-              </p>
-            </div>
-          </div>
-
-          {/* Kontrol Sortir Harga */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
-              Sortir Harga:
-            </span>
-            <div className="inline-flex bg-white rounded-xl p-1 border border-slate-200 shadow-2xs text-xs font-medium">
+      {/* Filter & Sort Bar (Minimalis & Mobile-Friendly) */}
+      <div id="filter-sort-price-section" className="bg-slate-50/90 rounded-2xl border border-slate-200/80 p-2.5 sm:p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Kontrol Urutan Harga */}
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+            <span className="text-[11px] font-semibold text-slate-400 hidden xs:inline shrink-0">Urutkan:</span>
+            <div className="inline-flex bg-white rounded-xl p-0.5 border border-slate-200 shadow-2xs text-[11px] font-medium">
               <button
                 type="button"
                 id="btn-sort-default"
                 onClick={() => setSortBy('default')}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-xs ${
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   sortBy === 'default'
                     ? 'bg-slate-900 text-white font-bold shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -471,185 +364,115 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
                 type="button"
                 id="btn-sort-price-asc"
                 onClick={() => setSortBy('price-asc')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-xs ${
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                   sortBy === 'price-asc'
                     ? 'bg-blue-600 text-white font-bold shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="Urutkan dari Harga Termurah"
               >
-                <ArrowDownWideNarrow className="w-3.5 h-3.5" />
+                <ArrowDownWideNarrow className="w-3 h-3" />
                 <span>Termurah</span>
               </button>
               <button
                 type="button"
                 id="btn-sort-price-desc"
                 onClick={() => setSortBy('price-desc')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-xs ${
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                   sortBy === 'price-desc'
                     ? 'bg-blue-600 text-white font-bold shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="Urutkan dari Harga Tertinggi"
               >
-                <ArrowUpNarrowWide className="w-3.5 h-3.5" />
-                <span>Tertinggi</span>
+                <ArrowUpNarrowWide className="w-3 h-3" />
+                <span>Termahal</span>
               </button>
             </div>
-
-            {(priceRange !== 'all' || sortBy !== 'default') && (
-              <button
-                type="button"
-                id="btn-reset-filters"
-                onClick={() => {
-                  setPriceRange('all');
-                  setSortBy('default');
-                }}
-                className="p-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                title="Reset Sortir & Filter Harga"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
+
+          {/* Reset Filter Button */}
+          {(priceRange !== 'all' || sortBy !== 'default') && (
+            <button
+              type="button"
+              id="btn-reset-filters"
+              onClick={() => {
+                setPriceRange('all');
+                setSortBy('default');
+              }}
+              className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 text-[11px] font-semibold flex items-center gap-1 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
 
-        {/* Filter Rentang Harga */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 scrollbar-none text-xs border-t border-slate-200/70">
-          <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap mr-1 flex items-center gap-1 shrink-0">
-            <Tag className="w-3 h-3 text-slate-400" />
-            Rentang Harga:
-          </span>
-          <button
-            type="button"
-            id="filter-price-all"
-            onClick={() => setPriceRange('all')}
-            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer text-[11px] ${
-              priceRange === 'all'
-                ? 'bg-blue-600 text-white font-bold shadow-2xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            Semua Harga
-          </button>
-          <button
-            type="button"
-            id="filter-price-0-99k"
-            onClick={() => setPriceRange('0-99k')}
-            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer text-[11px] ${
-              priceRange === '0-99k'
-                ? 'bg-blue-600 text-white font-bold shadow-2xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            0 - 99.000
-          </button>
-          <button
-            type="button"
-            id="filter-price-100k-199k"
-            onClick={() => setPriceRange('100k-199k')}
-            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer text-[11px] ${
-              priceRange === '100k-199k'
-                ? 'bg-blue-600 text-white font-bold shadow-2xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            100.000 - 199.000
-          </button>
-          <button
-            type="button"
-            id="filter-price-200k-300k"
-            onClick={() => setPriceRange('200k-300k')}
-            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer text-[11px] ${
-              priceRange === '200k-300k'
-                ? 'bg-blue-600 text-white font-bold shadow-2xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            200.000 - 300.000
-          </button>
-          <button
-            type="button"
-            id="filter-price-above300k"
-            onClick={() => setPriceRange('above300k')}
-            className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer text-[11px] ${
-              priceRange === 'above300k'
-                ? 'bg-blue-600 text-white font-bold shadow-2xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            &gt; 300.000
-          </button>
+        {/* Filter Rentang Harga - Horizontal Scrollable Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
+          {[
+            { id: 'all', label: 'Semua Harga' },
+            { id: '0-99k', label: '< 100rb' },
+            { id: '100k-199k', label: '100 - 199rb' },
+            { id: '200k-300k', label: '200 - 300rb' },
+            { id: 'above300k', label: '> 300rb' }
+          ].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              id={`filter-price-${p.id}`}
+              onClick={() => setPriceRange(p.id as PriceRangeOption)}
+              className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                priceRange === p.id
+                  ? 'bg-blue-600 text-white font-bold shadow-2xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
 
-        {/* Baris Tombol Aksi Excel: Hanya Tampil untuk Akun Administrator Terverifikasi */}
+        {/* Baris Tombol Aksi Excel: Tampil untuk Administrator */}
         {isAdminLoggedIn && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-200/80 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-200">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800">Manajemen Katalog via Excel</span>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200">
-                    Akses Admin
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500">Unduh format acuan atau unggah banyak produk baru otomatis</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-xs">
+            <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              Kelola Excel
+            </span>
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 id="btn-download-template-catalog"
                 onClick={downloadLaptopExcelTemplate}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                title="Unduh contoh template Excel resmi (.xlsx) sebagai acuan"
+                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Download Template Excel</span>
+                <Download className="w-3 h-3 text-emerald-600" />
+                <span>Template</span>
               </button>
-
               <button
                 type="button"
                 id="btn-upload-excel-catalog"
                 onClick={() => setShowExcelModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                title="Unggah spreadsheet Excel untuk menambahkan produk baru secara otomatis"
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1"
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload Produk Baru Excel</span>
+                <Upload className="w-3 h-3" />
+                <span>Upload Excel</span>
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Catalog Cards Grid - Maksimal 12 Produk per Halaman */}
-      <div id="catalog-products-anchor" ref={catalogSectionRef} className="scroll-mt-24 space-y-3.5 pt-1">
-        {/* Sub-header status bar ringkas */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-600">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span>Menampilkan</span>
-            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-              {filteredLaptops.length > 0 ? (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredLaptops.length)}
-            </span>
-            <span>dari total <strong className="text-slate-900">{filteredLaptops.length}</strong> unit laptop</span>
-          </div>
-
+      {/* Catalog Products Grid */}
+      <div id="catalog-products-anchor" ref={catalogSectionRef} className="scroll-mt-24 space-y-2.5 pt-1">
+        {/* Status bar ringkas */}
+        <div className="flex items-center justify-between px-1 text-[11px] text-slate-500">
+          <span>{filteredLaptops.length} unit laptop tersedia</span>
           {totalPages > 1 && (
-            <div className="flex items-center gap-1.5 font-semibold">
-              <span className="text-slate-500">Halaman</span>
-              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200/80">
-                {safeCurrentPage} / {totalPages}
-              </span>
-            </div>
+            <span className="font-semibold text-slate-700">Hal {safeCurrentPage} / {totalPages}</span>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-6">
           {paginatedLaptops.map((laptop) => {
           // Specs extraction for high fidelity presentation
           const cpuText = laptop.specCpu || laptop.processor.replace(/Intel®|AMD|Apple|Gen|Core™/g, '').trim().split('(')[0].trim();
@@ -659,10 +482,13 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
           return (
             <div
               key={laptop.id}
-              className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col overflow-hidden group"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col overflow-hidden group"
             >
               {/* Image Container */}
-              <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden">
+              <div 
+                onClick={() => onViewDetails(laptop)}
+                className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-100 overflow-hidden cursor-pointer"
+              >
                 <img
                   src={laptop.image}
                   alt={laptop.name}
@@ -670,96 +496,70 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
                   loading="lazy"
                 />
 
-                {/* Branch Location Badge - Perlihatkan lokasi laptop di Katalog */}
-                <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-slate-800 text-[10px] sm:text-[11px] font-bold border border-slate-200/90 shadow-xs flex items-center gap-1.5">
-                  <MapPin className={`w-3 h-3 ${laptop.branchCity === 'Malang' ? 'text-amber-600' : 'text-blue-600'}`} />
+                {/* Branch Location Badge */}
+                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-xs text-slate-800 text-[9px] sm:text-[11px] font-bold border border-slate-200/90 shadow-2xs flex items-center gap-1">
+                  <MapPin className={`w-2.5 h-2.5 ${laptop.branchCity === 'Malang' ? 'text-amber-600' : 'text-blue-600'}`} />
                   <span>
-                    {laptop.branchCity === 'Malang' ? 'Pusat Malang' : `Cabang ${laptop.branchCity || 'Malang'}`}
+                    {laptop.branchCity || 'Malang'}
                   </span>
                 </div>
 
-                {/* OLED badge if Dell XPS or hasOledBadge */}
+                {/* OLED badge */}
                 {(laptop.hasOledBadge || laptop.name.toUpperCase().includes('OLED')) && (
-                  <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-black/90 text-white text-[10px] font-black tracking-wider border border-emerald-400 shadow-sm flex items-center gap-1">
-                    <span>OLED</span>
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/90 text-white text-[9px] font-bold tracking-wider border border-emerald-400">
+                    OLED
                   </div>
                 )}
               </div>
 
               {/* Card Body */}
-              <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-2.5">
-                <div>
-                  {/* Brand & City Row */}
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between space-y-2">
+                <div 
+                  onClick={() => onViewDetails(laptop)}
+                  className="cursor-pointer space-y-1"
+                >
+                  {/* Brand Row */}
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">
                       {laptop.brand}
                     </span>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1">
-                      <Building2 className="w-2.5 h-2.5" />
-                      {laptop.branchCity || 'Malang'}
+                    <span className="text-[9px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 shrink-0">
+                      Tersedia
                     </span>
                   </div>
 
                   {/* Laptop Title */}
-                  <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1 mb-2.5">
+                  <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug line-clamp-1 group-hover:text-blue-600 transition-colors">
                     {laptop.name}
                   </h3>
 
-                  {/* 3 Specs with Icons */}
-                  <div className="space-y-1.5 text-xs text-slate-800">
-                    <div className="flex items-center gap-3">
-                      {/* CPU */}
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Cpu className="w-3.5 h-3.5 text-slate-700 flex-shrink-0 stroke-[2]" />
-                        <span className="font-medium truncate">{cpuText}</span>
-                      </div>
-                      {/* RAM */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <RamIcon className="w-3.5 h-3.5 text-slate-700 flex-shrink-0" />
-                        <span className="font-medium">{ramText}</span>
-                      </div>
-                    </div>
-
-                    {/* Storage */}
-                    <div className="flex items-center gap-1.5">
-                      <HardDrive className="w-3.5 h-3.5 text-slate-700 flex-shrink-0 stroke-[2]" />
-                      <span className="font-medium">{storageText}</span>
-                    </div>
-                  </div>
-
-                  {/* Stock & Details Link Row */}
-                  <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => onViewDetails(laptop)}
-                      className="text-blue-600 hover:text-blue-700 text-xs font-semibold underline cursor-pointer"
-                    >
-                      Lihat Detail
-                    </button>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] sm:text-[11px] font-medium">
-                      {laptop.badge || `Terbatas! Stok (${laptop.availableUnits}) Unit`}
-                    </span>
+                  {/* Compact Specs: 1 Clean Line */}
+                  <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-600 truncate py-0.5">
+                    <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 font-medium truncate">{cpuText}</span>
+                    <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 font-medium shrink-0">{laptop.ram}</span>
                   </div>
                 </div>
 
                 {/* Pricing & Call to Action */}
-                <div className="pt-2">
-                  <div className="flex items-baseline gap-1 mb-2">
-                    <span className="text-lg sm:text-xl font-extrabold text-slate-900">
+                <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div>
+                    <span className="text-xs sm:text-base font-black text-slate-900">
                       {formatRupiah(laptop.dailyPrice)}
                     </span>
-                    <span className="text-xs font-normal text-slate-500">
-                      / bln
+                    <span className="text-[10px] text-slate-400 block sm:inline sm:ml-1">
+                      / hari
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onSelectLaptop(laptop)}
-                    className="w-full py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs sm:text-sm font-bold shadow-xs transition-all cursor-pointer text-center"
-                  >
-                    Sewa Sekarang
-                  </button>
+                  <div className="flex items-center gap-1 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => onSelectLaptop(laptop)}
+                      className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-[11px] sm:text-xs font-bold transition-all text-center shadow-2xs cursor-pointer"
+                    >
+                      Sewa
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -768,77 +568,69 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
         </div>
       </div>
 
-      {/* Pagination Controls - Maksimal 12 Produk per Halaman, tombol Next & Prev */}
+      {/* Pagination Controls - Mobile Friendly & Minimal */}
       {filteredLaptops.length > 0 && totalPages > 1 && (
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-600 font-medium order-2 sm:order-1 text-center sm:text-left">
-            Menampilkan <strong className="text-slate-900">{paginatedLaptops.length} produk</strong> di halaman {safeCurrentPage} (maksimal 12 per halaman)
-          </div>
+        <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-2xs flex items-center justify-between gap-2">
+          {/* Tombol Sebelumnya */}
+          <button
+            type="button"
+            id="btn-catalog-prev"
+            onClick={() => handlePageChange(safeCurrentPage - 1)}
+            disabled={safeCurrentPage <= 1}
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+              safeCurrentPage <= 1
+                ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'
+                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 shadow-2xs active:scale-95'
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden xs:inline">Prev</span>
+          </button>
 
-          <div className="flex items-center gap-1.5 order-1 sm:order-2 flex-wrap justify-center">
-            {/* Tombol Sebelumnya */}
-            <button
-              type="button"
-              id="btn-catalog-prev"
-              onClick={() => handlePageChange(safeCurrentPage - 1)}
-              disabled={safeCurrentPage <= 1}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                safeCurrentPage <= 1
-                  ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 shadow-2xs hover:border-slate-400 active:scale-95'
-              }`}
-              title="Halaman sebelumnya"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Sebelumnya</span>
-            </button>
-
-            {/* Nomor Halaman */}
-            <div className="flex items-center gap-1">
-              {paginationRange.map((item, idx) => {
-                if (item === '...') {
-                  return (
-                    <span key={`dots-${idx}`} className="w-7 sm:w-8 h-8 sm:h-9 flex items-center justify-center text-slate-400 text-xs font-bold">
-                      ...
-                    </span>
-                  );
-                }
-                const pageNum = item as number;
-                const isActive = pageNum === safeCurrentPage;
+          {/* Nomor Halaman */}
+          <div className="flex items-center gap-1">
+            {paginationRange.map((item, idx) => {
+              if (item === '...') {
                 return (
-                  <button
-                    key={`page-${pageNum}`}
-                    type="button"
-                    onClick={() => handlePageChange(pageNum)}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs font-extrabold'
-                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
+                  <span key={`dots-${idx}`} className="w-6 sm:w-8 h-8 flex items-center justify-center text-slate-400 text-xs font-bold">
+                    ...
+                  </span>
                 );
-              })}
-            </div>
-
-            {/* Tombol Selanjutnya / Next */}
-            <button
-              type="button"
-              id="btn-catalog-next"
-              onClick={() => handlePageChange(safeCurrentPage + 1)}
-              disabled={safeCurrentPage >= totalPages}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                safeCurrentPage >= totalPages
-                  ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-xs hover:shadow'
-              }`}
-              title="Lihat 12 produk berikutnya"
-            >
-              <span>Next / Selanjutnya</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              }
+              const pageNum = item as number;
+              const isActive = pageNum === safeCurrentPage;
+              return (
+                <button
+                  key={`page-${pageNum}`}
+                  type="button"
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`w-7 sm:w-8 h-7 sm:h-8 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Tombol Selanjutnya / Next */}
+          <button
+            type="button"
+            id="btn-catalog-next"
+            onClick={() => handlePageChange(safeCurrentPage + 1)}
+            disabled={safeCurrentPage >= totalPages}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+              safeCurrentPage >= totalPages
+                ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'
+                : 'bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-xs'
+            }`}
+          >
+            <span className="hidden xs:inline">Next</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       )}
 

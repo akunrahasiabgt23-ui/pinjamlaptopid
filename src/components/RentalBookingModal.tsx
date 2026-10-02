@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, Check, ShieldAlert, AlertTriangle, Calendar, Clock, MapPin, 
+  X, Check, ShieldAlert, AlertTriangle, AlertCircle, Calendar, Clock, MapPin, 
   Truck, User, Phone, Mail, FileText, Banknote, CreditCard, QrCode, 
   ChevronRight, ArrowLeft, Sparkles, CheckCircle2, Building2, Info,
   LogIn, UserPlus, Key, Lock, Eye, EyeOff, UserCheck, ShieldCheck, Printer, ExternalLink
@@ -197,10 +197,6 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
     setDomicileError('');
 
     // 1. Validasi Syarat Domisili vs Cabang Laptop
-    // "Jika katalog ada di Bekasi, tidak bisa diorder oleh orang dengan domisili Malang"
-    // Malang: Malang Kota dan Malang Kabupaten
-    // Sidoarjo: Sidoarjo dan Surabaya
-    // Bekasi: Bekasi kota dan Kabupaten, dan Semua Jakarta
     const checkDomicile = isDomicileAllowedForBranch(laptop.branchCity, customerCity);
     if (!checkDomicile.allowed) {
       setDomicileError(checkDomicile.reason || 'Domisili tidak sesuai dengan cabang laptop.');
@@ -208,48 +204,46 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
       return false;
     }
 
-    // 2. Validasi Data Diri & Kontak Darurat
-    if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim() || !customerAddress.trim()) {
-      alert('Mohon lengkapi data diri Anda (Nama, No HP/WA, Email, dan Alamat Domisili)!');
+    // 2. Validasi Data Diri (Ringkas & Cepat)
+    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+      alert('Mohon lengkapi Nama Lengkap, Nomor WhatsApp, dan Alamat Anda!');
       return false;
     }
-    if (!emergency1Name.trim() || !emergency1Phone.trim() || !emergency2Name.trim() || !emergency2Phone.trim()) {
-      alert('Sesuai SOP Pinjamlaptop, Anda WAJIB mengisi 2 Kontak Darurat Aktif!');
-      return false;
+
+    // Default otomatis jika email atau kontak tambahan kosong
+    if (!customerEmail.trim()) {
+      setCustomerEmail(`${customerPhone.trim().replace(/\D/g, '')}@pinjamlaptop.id`);
     }
+    if (!emergency1Name.trim()) setEmergency1Name(customerName.trim());
+    if (!emergency1Phone.trim()) setEmergency1Phone(customerPhone.trim());
+    if (!emergency2Name.trim()) setEmergency2Name('-');
+    if (!emergency2Phone.trim()) setEmergency2Phone('-');
+
     return true;
   };
 
   const validateStep3 = () => {
-    // 1. Validasi Jaminan (2 Identitas atau Deposit)
+    // Jaminan otomatis diset tanpa perlu mengetikkan nomor/nama identitas
     if (guaranteeType === 'two_identities') {
-      if (!doc1Number.trim() || !doc1HolderName.trim()) {
-        alert('Mohon lengkapi data Identitas Pertama (misal KTP)!');
-        return false;
-      }
-      if (!doc2Number.trim() || !doc2HolderName.trim()) {
-        alert('Mohon lengkapi data Identitas Kedua (SIM/BPKB/Ijazah/KTM)!');
-        return false;
-      }
-      if (doc1Type === doc2Type) {
-        alert('Identitas 1 dan Identitas 2 harus merupakan dokumen berbeda (contoh: KTP + SIM, atau KTP + Ijazah)!');
-        return false;
-      }
+      if (!doc1Number.trim()) setDoc1Number('KTP-PRIBADI');
+      if (!doc1HolderName.trim()) setDoc1HolderName(customerName.trim());
+      if (!doc2Number.trim()) setDoc2Number('DOC2-PRIBADI');
+      if (!doc2HolderName.trim()) setDoc2HolderName(customerName.trim());
     }
 
-    // 2. Validasi Data Member Baru jika belum login sebagai member lama
+    // Validasi Akun Member Baru jika belum login
     if (!loggedInMember) {
       if (!memberIdInput.trim()) {
-        alert('Sesuai petunjuk, mohon lengkapi "ID Baru" untuk akun member Anda pada formulir nomor 3!');
+        alert('Mohon isi ID Member untuk akun Anda!');
         return false;
       }
       if (!memberPasswordInput.trim()) {
-        alert('Mohon lengkapi "Password" untuk akun member baru Anda pada formulir nomor 3!');
+        alert('Mohon isi Password untuk akun Anda!');
         return false;
       }
       const existing = getMemberById(memberIdInput.trim());
       if (existing) {
-        alert(`ID Member "${memberIdInput.trim()}" sudah terdaftar di database. Silakan pilih ID Baru yang lain atau gunakan tombol "Punya Akun" di tahap data diri.`);
+        alert(`ID Member "${memberIdInput.trim()}" sudah terdaftar. Silakan pilih ID lain atau gunakan akun yang sudah ada.`);
         return false;
       }
     }
@@ -413,52 +407,76 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
-      <div className="relative bg-white rounded-3xl max-w-2xl w-full shadow-2xl border-2 border-slate-300 overflow-hidden my-4 flex flex-col max-h-[92vh]">
-        
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full shadow-2xl border-t sm:border-2 border-slate-300 overflow-hidden flex flex-col max-h-[94vh]">
+        {/* Mobile Pull Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-2 sm:hidden shrink-0" />
+
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+        <div className="p-3.5 sm:p-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
             <img 
               src={laptop.image} 
               alt={laptop.name} 
-              className="w-14 h-14 rounded-2xl object-cover border-2 border-white/20 shadow-md" 
+              className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl object-cover border border-white/20 shrink-0" 
             />
-            <div>
-              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                <span className="text-xs font-black text-blue-400 uppercase tracking-wider block">
-                  Formulir Peminjaman Laptop
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                  Sewa Laptop
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-amber-950 flex items-center gap-1">
-                  <MapPin className="w-2.5 h-2.5" />
-                  {laptop.branchCity === 'Malang' ? 'Pusat Malang' : `Cabang ${laptop.branchCity || 'Malang'}`}
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-400 text-amber-950">
+                  {laptop.branchCity || 'Malang'}
                 </span>
               </div>
-              <h3 className="text-base sm:text-xl font-black leading-tight line-clamp-1">
+              <h3 className="text-sm sm:text-lg font-bold leading-tight line-clamp-1">
                 {laptop.name}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 font-semibold">
-                Tarif: {formatRupiah(laptop.dailyPrice)} / hari • Melayani domisili: {branchInfo.allowedDomiciles.slice(0, 3).join(', ')}
+              <p className="text-[11px] sm:text-xs text-slate-300">
+                {formatRupiah(laptop.dailyPrice)} / hari
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors text-lg font-bold border border-slate-700"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold shrink-0 cursor-pointer"
             aria-label="Tutup"
           >
             ✕
           </button>
         </div>
 
-        {/* Stepper Progress Bar */}
-        <div className="bg-slate-50 border-b-2 border-slate-200 px-4 sm:px-6 py-3.5">
-          <div className="flex items-center justify-between text-xs sm:text-sm">
+        {/* Stepper Progress Bar (Responsive Mobile & Desktop) */}
+        <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2.5 sm:py-3.5">
+          {/* Mobile view: concise step indicator */}
+          <div className="sm:hidden flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-800">
+              Langkah {currentStep}/5: {
+                currentStep === 1 ? 'Durasi & Pengambilan' :
+                currentStep === 2 ? 'Data Pemesan' :
+                currentStep === 3 ? 'Jaminan & Akun' :
+                currentStep === 4 ? 'Pembayaran' : 'Surat Perjanjian'
+              }
+            </span>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <div 
+                  key={s} 
+                  className={`h-1.5 rounded-full transition-all ${
+                    s === currentStep ? 'w-5 bg-blue-600' : s < currentStep ? 'w-2 bg-blue-400' : 'w-2 bg-slate-200'
+                  }`} 
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop view: full steps */}
+          <div className="hidden sm:flex items-center justify-between text-xs sm:text-sm">
             <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-blue-700 font-black' : 'text-slate-400 font-medium'}`}>
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${currentStep >= 1 ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
                 1
               </span>
-              <span className="hidden sm:inline">1. Durasi</span>
+              <span>1. Durasi</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
 
@@ -466,7 +484,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${currentStep >= 2 ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
                 2
               </span>
-              <span className="hidden sm:inline">2. Data Diri</span>
+              <span>2. Data Diri</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
 
@@ -474,7 +492,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${currentStep >= 3 ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
                 3
               </span>
-              <span className="hidden sm:inline">3. Jaminan & Akun</span>
+              <span>3. Jaminan & Akun</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
 
@@ -482,7 +500,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${currentStep >= 4 ? 'bg-rose-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
                 4
               </span>
-              <span className="hidden sm:inline">4. Bayar</span>
+              <span>4. Bayar</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
 
@@ -490,7 +508,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${currentStep === 5 ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
                 5
               </span>
-              <span className="hidden sm:inline">5. Perjanjian (SPK)</span>
+              <span>5. Perjanjian (SPK)</span>
             </div>
           </div>
         </div>
@@ -577,21 +595,18 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
               </div>
 
               {/* Delivery / Pickup method */}
-              <div className="pt-4 border-t border-slate-200">
-                <h4 className="text-sm font-bold text-slate-900 mb-1">
-                  2. Metode Penyerahan Laptop
+              <div className="pt-3 border-t border-slate-200">
+                <h4 className="text-xs font-bold text-slate-900 mb-2">
+                  Metode Penyerahan Laptop
                 </h4>
-                <p className="text-xs text-slate-500 mb-3">
-                  Pilih apakah Anda ingin mengambil unit di Store Hub atau diantar oleh kurir kami.
-                </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {/* Delivery */}
                   <label
                     onClick={() => setDeliveryMethod('delivery')}
-                    className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${
+                    className={`p-3 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
                       deliveryMethod === 'delivery'
-                        ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20'
+                        ? 'border-blue-600 bg-blue-50/70 ring-1 ring-blue-500'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
@@ -600,17 +615,17 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                       name="deliveryMethod"
                       checked={deliveryMethod === 'delivery'}
                       onChange={() => setDeliveryMethod('delivery')}
-                      className="mt-1 text-blue-600"
+                      className="text-blue-600"
                     />
                     <div>
                       <div className="flex items-center gap-1.5">
                         <Truck className="w-4 h-4 text-blue-600" />
                         <span className="text-xs font-bold text-slate-900">
-                          Diantar Kurir Khusus (+Rp 35.000)
+                          Diantar Kurir (+Rp 35.000)
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        Kurir resmi Pinjamlaptop mengantar unit langsung ke alamat Anda dengan box proteksi tahan benturan.
+                      <p className="text-[11px] text-slate-500">
+                        Diantar langsung ke alamat Anda.
                       </p>
                     </div>
                   </label>
@@ -618,9 +633,9 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                   {/* Self Pickup */}
                   <label
                     onClick={() => setDeliveryMethod('self_pickup')}
-                    className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${
+                    className={`p-3 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
                       deliveryMethod === 'self_pickup'
-                        ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20'
+                        ? 'border-blue-600 bg-blue-50/70 ring-1 ring-blue-500'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
@@ -629,17 +644,17 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                       name="deliveryMethod"
                       checked={deliveryMethod === 'self_pickup'}
                       onChange={() => setDeliveryMethod('self_pickup')}
-                      className="mt-1 text-blue-600"
+                      className="text-blue-600"
                     />
                     <div>
                       <div className="flex items-center gap-1.5">
                         <Building2 className="w-4 h-4 text-emerald-600" />
                         <span className="text-xs font-bold text-slate-900">
-                          Ambil Sendiri di Hub (Gratis)
+                          Ambil di Hub (Gratis)
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        Ambil langsung di konter Store Hub kami dengan menunjukkan PIN unik pengambilan.
+                      <p className="text-[11px] text-slate-500">
+                        Ambil langsung di Store Hub.
                       </p>
                     </div>
                   </label>
@@ -989,115 +1004,32 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                 )}
               </div>
 
-              {/* 2 KONTAK DARURAT (WAJIB SESUAI FLOW BISNIS) */}
-              <div className="pt-4 border-t border-slate-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <Phone className="w-4 h-4 text-blue-600" />
-                  <h4 className="text-sm font-bold text-slate-900">
-                    2. Dua (2) Kontak Darurat Aktif (Wajib)
-                  </h4>
+              {/* Kontak Tambahan / Kerabat (Opsional & Ringkas) */}
+              <div className="pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="text-xs font-bold text-slate-800">
+                      Kontak Kerabat / Darurat (Opsional)
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">Untuk koordinasi pengiriman</span>
                 </div>
-                <p className="text-xs text-slate-500 mb-3">
-                  Sesuai prosedur keamanan unit bernilai tinggi, cantumkan 2 nomor keluarga/rekan kerja aktif yang dapat dihubungi.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  {/* Kontak 1 */}
-                  <div className="space-y-2 border-b sm:border-b-0 sm:border-r border-slate-200 pb-3 sm:pb-0 sm:pr-3">
-                    <span className="text-xs font-bold text-blue-700 block">
-                      Kontak Darurat 1
-                    </span>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                        Nama Lengkap
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Hendra Saputra"
-                        value={emergency1Name}
-                        onChange={(e) => setEmergency1Name(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                        Hubungan
-                      </label>
-                      <select
-                        value={emergency1Relation}
-                        onChange={(e) => setEmergency1Relation(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                      >
-                        <option value="Orang Tua / Ayah">Orang Tua / Ayah</option>
-                        <option value="Orang Tua / Ibu">Orang Tua / Ibu</option>
-                        <option value="Suami / Istri">Suami / Istri</option>
-                        <option value="Saudara Kandung">Saudara Kandung</option>
-                        <option value="Teman Kantor / Atasan">Teman Kantor / Atasan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                        Nomor HP Aktif
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="0813-XXXX-XXXX"
-                        value={emergency1Phone}
-                        onChange={(e) => setEmergency1Phone(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Kontak 2 */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-blue-700 block">
-                      Kontak Darurat 2
-                    </span>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                        Nama Lengkap
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Rina Kusuma"
-                        value={emergency2Name}
-                        onChange={(e) => setEmergency2Name(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                        Hubungan
-                      </label>
-                      <select
-                        value={emergency2Relation}
-                        onChange={(e) => setEmergency2Relation(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                      >
-                        <option value="Saudara Kandung">Saudara Kandung</option>
-                        <option value="Teman Satu Kantor">Teman Satu Kantor</option>
-                        <option value="Sahabat Dekat">Sahabat Dekat</option>
-                        <option value="Dosen Pembimbing">Dosen Pembimbing</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                        Nomor HP Aktif
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="0857-XXXX-XXXX"
-                        value={emergency2Phone}
-                        onChange={(e) => setEmergency2Phone(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                        required
-                      />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    type="text"
+                    placeholder="Nama kerabat / rekan (opsional)"
+                    value={emergency1Name}
+                    onChange={(e) => setEmergency1Name(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Nomor HP kerabat (opsional)"
+                    value={emergency1Phone}
+                    onChange={(e) => setEmergency1Phone(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                  />
                 </div>
               </div>
             </div>
@@ -1170,101 +1102,34 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                   </label>
                 </div>
 
-                {/* Sub-form: 2 Identitas Asli */}
+                {/* Sub-form: 2 Identitas Asli (Ringkas & Tanpa Input Nomor/Nama) */}
                 {guaranteeType === 'two_identities' ? (
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-blue-800">
-                      <Info className="w-4 h-4" />
-                      <span>Sebutkan 2 Identitas Asli (Pilihan: KTP, SIM, BPKB, Ijazah, KTM)</span>
+                  <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
+                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Ketentuan Jaminan Identitas Fisik (Tanpa Uang Deposit)</span>
                     </div>
 
-                    {/* Dokumen 1 */}
-                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
-                      <span className="text-xs font-bold text-slate-800 block">
-                        Dokumen Identitas 1 (Utama)
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-slate-500 block mb-1">Jenis Dokumen</label>
-                          <select
-                            value={doc1Type}
-                            onChange={(e) => setDoc1Type(e.target.value as any)}
-                            className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200"
-                          >
-                            <option value="KTP">KTP (e-KTP Asli)</option>
-                            <option value="SIM">SIM (SIM A/C Aktif)</option>
-                            <option value="BPKB">BPKB Asli Kendaraan</option>
-                            <option value="Ijazah">Ijazah Asli Pendidikan</option>
-                            <option value="KTM">KTM (Kartu Mahasiswa Aktif)</option>
-                          </select>
+                    <div className="p-3.5 bg-white rounded-xl border border-amber-200/80 space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>PENTING: DOKUMEN WAJIB ASLI &amp; MILIK PRIBADI PENYEWA</span>
+                      </div>
+                      <p className="text-[11px] text-slate-700 leading-relaxed">
+                        Anda <strong>tidak perlu mengetikkan nomor atau nama identitas</strong> di sini. Cukup siapkan 2 dokumen fisik asli milik Anda sendiri:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-800">
+                        <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                          <strong className="block text-slate-900 font-bold mb-0.5">1. Dokumen Utama</strong>
+                          <span>e-KTP Asli milik pribadi penyewa</span>
                         </div>
-                        <div>
-                          <label className="text-[10px] text-slate-500 block mb-1">Nomor Dokumen/NIK</label>
-                          <input
-                            type="text"
-                            placeholder="Nomor identitas dokumen 1"
-                            value={doc1Number}
-                            onChange={(e) => setDoc1Number(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-500 block mb-1">Nama Sesuai Dokumen</label>
-                          <input
-                            type="text"
-                            placeholder="Nama pemilik identitas"
-                            value={doc1HolderName}
-                            onChange={(e) => setDoc1HolderName(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200"
-                            required
-                          />
+                        <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                          <strong className="block text-slate-900 font-bold mb-0.5">2. Dokumen Kedua</strong>
+                          <span>SIM / Kartu Keluarga / Ijazah / KTM asli</span>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Dokumen 2 */}
-                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
-                      <span className="text-xs font-bold text-slate-800 block">
-                        Dokumen Identitas 2 (Sekunder)
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-slate-500 block mb-1">Jenis Dokumen</label>
-                          <select
-                            value={doc2Type}
-                            onChange={(e) => setDoc2Type(e.target.value as any)}
-                            className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200"
-                          >
-                            <option value="SIM">SIM (SIM A/C Aktif)</option>
-                            <option value="KTP">KTP (e-KTP Asli)</option>
-                            <option value="BPKB">BPKB Asli Kendaraan</option>
-                            <option value="Ijazah">Ijazah Asli Pendidikan</option>
-                            <option value="KTM">KTM (Kartu Mahasiswa Aktif)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-500 block mb-1">Nomor Dokumen/Reg</label>
-                          <input
-                            type="text"
-                            placeholder="Nomor identitas dokumen 2"
-                            value={doc2Number}
-                            onChange={(e) => setDoc2Number(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-500 block mb-1">Nama Sesuai Dokumen</label>
-                          <input
-                            type="text"
-                            placeholder="Nama pemilik identitas"
-                            value={doc2HolderName}
-                            onChange={(e) => setDoc2HolderName(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200"
-                            required
-                          />
-                        </div>
+                      <div className="text-[10px] text-amber-800 font-medium pt-1 border-t border-amber-100 leading-relaxed">
+                        * Dokumen fisik asli wajib atas nama Anda sendiri (bukan milik orang lain/kerabat). Dokumen diverifikasi langsung oleh petugas saat serah terima unit dan dikembalikan 100% utuh saat masa sewa selesai.
                       </div>
                     </div>
                   </div>
@@ -1275,8 +1140,8 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                       <Banknote className="w-4 h-4 text-emerald-600" />
                       Uang Jaminan Deposit: {formatRupiah(laptop.depositAmount)}
                     </p>
-                    <p className="text-emerald-700 leading-relaxed">
-                      Deposit akan ditagihkan bersama biaya sewa laptop saat checkout online. Setelah masa sewa selesai dan unit laptop kami terima dalam kondisi baik (bebas kerusakan fisik/cairan), uang deposit akan ditransfer kembali 100% ke rekening Anda dalam kurun waktu 1x24 jam.
+                    <p className="text-emerald-700 leading-relaxed text-[11px]">
+                      Deposit ditagihkan bersama biaya sewa dan dikembalikan 100% utuh ke rekening Anda dalam 1x24 jam setelah masa sewa berakhir &amp; unit laptop lolos inspeksi fungsi.
                     </p>
                   </div>
                 )}
@@ -1285,23 +1150,14 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                 {!loggedInMember ? (
                   <div className="mt-4 pt-4 border-t border-slate-200">
                     <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 text-white border border-slate-800 space-y-3 shadow-md">
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <UserPlus className="w-4 h-4" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <UserPlus className="w-4 h-4 text-blue-400" />
+                          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                            Akun Member (Tersimpan Otomatis)
+                          </h4>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                              Data Member Baru (Wajib Diisi)
-                            </h4>
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded">
-                              Tersimpan di Database
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
-                            Buat ID Baru dan Password untuk akun member Anda. Seluruh detail sewa yang Anda isi (data diri, 2 kontak darurat, serta jaminan identitas/deposit) akan otomatis disimpan di Database Pinjamlaptop untuk kemudahan sewa berikutnya.
-                          </p>
-                        </div>
+                        <span className="text-[10px] text-slate-400">Untuk kemudahan sewa berikutnya</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -1320,9 +1176,6 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                               required
                             />
                           </div>
-                          <span className="text-[10px] text-slate-400 mt-1 block">
-                            ID ini digunakan saat login sewa berikutnya
-                          </span>
                         </div>
 
                         <div>
@@ -1347,17 +1200,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                               {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
                           </div>
-                          <span className="text-[10px] text-slate-400 mt-1 block">
-                            Password untuk akun member Anda
-                          </span>
                         </div>
-                      </div>
-
-                      <div className="p-2.5 bg-blue-950/60 border border-blue-800/60 rounded-xl flex items-start gap-2 text-[11px] text-blue-200">
-                        <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                        <span>
-                          Setelah transaksi sewa selesai, seluruh data sewa dan jaminan Anda disimpan ke Database Member Pinjamlaptop.
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -1615,94 +1458,93 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                   </div>
                 </div>
 
-                {/* PASAL 1: OBJEK SEWA */}
-                <div className="space-y-2">
+                {/* POIN-POIN KESEPAKATAN SURAT PERJANJIAN SEWA (POINT BY POINT) */}
+                <div className="space-y-3">
                   <h5 className="font-bold text-slate-950 uppercase text-xs border-l-2 border-blue-600 pl-2">
-                    PASAL 1 — OBJEK SEWA & SPESIFIKASI UNIT
+                    POIN-POIN KESEPAKATAN SEWA MENYEWA
                   </h5>
-                  <div className="p-3 bg-slate-50 print:bg-white border border-slate-200 rounded-xl space-y-2 text-xs">
-                    <p>PIHAK PERTAMA menyerahkan hak guna pakai laptop berikut kepada PIHAK KEDUA:</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-2 font-medium">
-                      <p>• SKU / Kode Unit: <strong className="font-mono text-blue-700">{pendingCompletedOrder.laptop.sku}</strong></p>
-                      <p>• Tipe Unit: <strong>{pendingCompletedOrder.laptop.name}</strong></p>
-                      <p>• Kategori: <strong>{pendingCompletedOrder.laptop.category.toUpperCase()}</strong></p>
-                      <p>• Prosesor: <strong>{pendingCompletedOrder.laptop.processor}</strong></p>
-                      <p>• Memori RAM: <strong>{pendingCompletedOrder.laptop.ram}</strong></p>
-                      <p>• Media Simpan: <strong>{pendingCompletedOrder.laptop.storage}</strong></p>
-                      <p>• Kelengkapan Bawaan: <strong>Unit Laptop, Charger Original, Tas Laptop Resmi</strong></p>
+
+                  <div className="space-y-2 text-xs">
+                    {/* Poin 1 */}
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        1
+                      </span>
+                      <div>
+                        <strong className="text-slate-900 block">Objek &amp; Kepemilikan Unit</strong>
+                        <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
+                          Unit <strong>{pendingCompletedOrder.laptop.name}</strong> ({pendingCompletedOrder.laptop.processor}, RAM {pendingCompletedOrder.laptop.ram}, SSD {pendingCompletedOrder.laptop.storage}) beserta charger asli &amp; tas adalah hak milik PinjamLaptop. Diserahkan dalam kondisi normal dan siap pakai.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Poin 2 */}
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        2
+                      </span>
+                      <div>
+                        <strong className="text-slate-900 block">Durasi Sewa ({pendingCompletedOrder.durationDays} Hari)</strong>
+                        <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
+                          Masa sewa dihitung 24 jam per hari sejak unit diterima. Pengembalian wajib tepat waktu sesuai batas tanggal dan jam yang disepakati. Total sewa lunas: <strong>{formatRupiah(pendingCompletedOrder.pricing.totalPaid)}</strong>.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Poin 3 */}
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
+                      <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        3
+                      </span>
+                      <div>
+                        <strong className="text-amber-950 block">Jaminan Wajib Milik Pribadi Penyewa</strong>
+                        <p className="text-amber-900 text-[11px] mt-0.5 leading-relaxed">
+                          {pendingCompletedOrder.guaranteeType === 'two_identities' 
+                            ? 'Dokumen jaminan fisik wajib ASLI dan MILIK PRIBADI atas nama penyewa sendiri. Jaminan dikembalikan 100% utuh saat unit kembali normal.'
+                            : `Uang deposit jaminan sebesar ${formatRupiah(pendingCompletedOrder.laptop.depositAmount || 1500000)} dikembalikan 100% utuh ke rekening penyewa setelah unit diperiksa normal.`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Poin 4 */}
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-rose-50/70 border border-rose-200">
+                      <span className="w-5 h-5 rounded-full bg-rose-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        4
+                      </span>
+                      <div>
+                        <strong className="text-rose-950 block">Denda Keterlambatan: Rp 20.000 / Jam</strong>
+                        <p className="text-rose-900 text-[11px] mt-0.5 leading-relaxed">
+                          Keterlambatan dikenakan denda Rp 20.000 per 1 jam berjalan dan wajib dilunasi saat pengembalian unit tanpa alasan penundaan (macet, cuaca, urusan mendadak).
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Poin 5 */}
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        5
+                      </span>
+                      <div>
+                        <strong className="text-slate-900 block">Perawatan &amp; Tanggung Jawab Kerusakan</strong>
+                        <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
+                          Penyewa wajib merawat unit. Kerusakan akibat kelalaian (jatuh, cairan, layar pecah) atau kehilangan menjadi beban tanggung jawab penyewa sesuai biaya perbaikan/ganti rugi resmi.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Poin 6 */}
+                    <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        6
+                      </span>
+                      <div>
+                        <strong className="text-slate-900 block">Larangan Hukum Pidana (Pasal 372 KUHP)</strong>
+                        <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
+                          Dilarang keras menggadaikan, menjual, memindahtangankan, atau merusak segel unit. Segala bentuk penggelapan barang akan langsung diproses pidana ke pihak kepolisian.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* PASAL 2: DURASI & PEMBAYARAN */}
-                <div className="space-y-2">
-                  <h5 className="font-bold text-slate-950 uppercase text-xs border-l-2 border-blue-600 pl-2">
-                    PASAL 2 — JANGKA WAKTU & BIAYA SEWA (LUNAS)
-                  </h5>
-                  <div className="p-3 bg-slate-50 print:bg-white border border-slate-200 rounded-xl space-y-1.5 text-xs">
-                    <p>1. Masa sewa disepakati selama <strong>{pendingCompletedOrder.durationDays} Hari</strong>.</p>
-                    <p>2. Jam Mulai Sewa: <strong>Mengikuti waktu aktual saat Admin menekan tombol "Mulai Sewa" pada saat serah terima unit</strong> (jadwal estimasi: {new Date(pendingCompletedOrder.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}).</p>
-                    <p>3. Batas Pengembalian Sewa: <strong>Tepat {pendingCompletedOrder.durationDays} hari terhitung sejak tombol Mulai Sewa diaktifkan oleh Admin</strong>.</p>
-                    <p>4. Total Biaya Sewa yang telah <strong>DIBAYAR LUNAS</strong> oleh PIHAK KEDUA: <strong>{formatRupiah(pendingCompletedOrder.pricing.totalPaid)}</strong> via {pendingCompletedOrder.paymentMethod.toUpperCase()}.</p>
-                  </div>
-                </div>
-
-                {/* PASAL 3: JAMINAN */}
-                <div className="space-y-2">
-                  <h5 className="font-bold text-slate-950 uppercase text-xs border-l-2 border-blue-600 pl-2">
-                    PASAL 3 — JAMINAN IDENTITAS / DEPOSIT
-                  </h5>
-                  <div className="p-3 bg-slate-50 print:bg-white border border-slate-200 rounded-xl text-xs">
-                    <p>
-                      Bentuk Jaminan: {pendingCompletedOrder.guaranteeType === 'two_identities' ? (
-                        <strong>2 Kartu Identitas Fisik Asli (KTP Asli + Dokumen Pendukung). Tanpa Deposit Uang.</strong>
-                      ) : (
-                        <strong>Uang Deposit Sebesar {formatRupiah(pendingCompletedOrder.laptop.depositAmount || 1500000)} (100% Refundable saat unit kembali aman).</strong>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-slate-600 mt-1">
-                      Jaminan dikembalikan utuh seketika setelah laptop diperiksa tanpa kerusakan fungsi maupun fisik.
-                    </p>
-                  </div>
-                </div>
-
-                {/* PASAL 4: ATURAN DENDA KETERLAMBATAN 20RB/JAM WAJIB DIBAYARKAN BAGAIMANAPUN SITUASINYA */}
-                <div className="space-y-2 p-3.5 bg-rose-50/70 print:bg-white border-2 border-rose-300 rounded-xl">
-                  <h5 className="font-black text-rose-950 uppercase text-xs border-l-2 border-rose-600 pl-2">
-                    PASAL 4 — DENDA KETERLAMBATAN PENGEMBALIAN & PEMBAYARAN
-                  </h5>
-                  <div className="space-y-1.5 text-xs text-rose-950">
-                    <p className="text-justify font-medium">
-                      1. Jam Mulai Sewa terhitung sejak jam yang sama saat menerima unit yang disewakan. Batas waktu pengembalian unit sewa adalah paling lambat adalah saat masa sewa habis (terhitung sejak jam yang sama saat menerima unit yang disewakan).
-                    </p>
-                    <p className="text-justify font-medium">
-                      2. <strong>Denda berjalan saat masa sewa berakhir</strong> (terhitung sejak masa sewa habis pada jam yang sama saat menerima unit yang disewakan). Dikenakan <strong>DENDA KETERLAMBATAN SEBESAR Rp 20.000,- (DUA PULUH RIBU RUPIAH) PER 1 (SATU) JAM KETERLAMBATAN BERJALAN</strong> dan terus bertambah setiap jam berjalan.
-                    </p>
-                    <p className="text-justify font-bold text-rose-900 bg-white/90 p-2 rounded border border-rose-300 leading-relaxed">
-                      3. DENDA WAJIB DIBAYARKAN BAGAIMANAPUN SITUASINYA TANPA PENGECUALIAN. PIHAK KEDUA mengerti dan menyepakati bahwa alasan kemacetan lalu lintas, cuaca buruk/hujan lebat, lupa waktu, kesibukan kantor/kuliah mendadak, masalah koneksi, maupun kendala pribadi apapun TIDAK DAPAT dijadikan alasan untuk menghapus atau menunda pembayaran denda keterlambatan.
-                    </p>
-                    <p className="text-justify font-medium">
-                      4. Denda keterlambatan langsung dipotong dari uang deposit jaminan atau wajib ditransfer lunas sebelum 2 kartu identitas fisik asli diserahkan kembali oleh PIHAK PERTAMA.
-                    </p>
-                  </div>
-                </div>
-
-                {/* PASAL 5: KETENTUAN HUKUM PIDANA & PENGGELAPAN */}
-                <div className="space-y-2">
-                  <h5 className="font-bold text-slate-950 uppercase text-xs border-l-2 border-blue-600 pl-2">
-                    PASAL 5 — KETENTUAN HUKUM & SANKSI PIDANA
-                  </h5>
-                  <ol className="list-decimal pl-5 space-y-1 text-justify text-xs">
-                    <li>
-                      <strong>Hak Milik:</strong> Unit laptop dan seluruh aksesoris adalah hak milik mutlak PIHAK PERTAMA.
-                    </li>
-                    <li>
-                      <strong>Larangan Penggelapan (Pasal 372 KUHP):</strong> Dilarang keras menggadaikan, menjual, memindahtangankan, atau membongkar unit laptop sewa. Tindakan tersebut merupakan tindak pidana penggelapan dan akan langsung dilaporkan ke pihak kepolisian.
-                    </li>
-                    <li>
-                      <strong>Klausul Hangus 100%:</strong> Apabila identitas yang diberikan terbukti palsu/fiktif, maka pesanan dibatalkan dan seluruh pembayaran dinyatakan hangus 100% sebagai ganti rugi operasional.
-                    </li>
-                  </ol>
                 </div>
 
                 {/* Tanda Tangan */}
