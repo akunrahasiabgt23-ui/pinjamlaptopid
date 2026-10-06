@@ -330,6 +330,16 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
               {/* TAB 1: LOGIN */}
               {activeTab === 'login' && (
                 <form onSubmit={handleLogin} className="space-y-4">
+                  {/* Info Hint */}
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
+                    <p className="leading-relaxed">
+                      💡 <strong>Penyewa Baru?</strong> Jika belum pernah membuat akun, silakan klik tab <button type="button" onClick={() => setActiveTab('register')} className="text-blue-600 font-bold hover:underline">Daftar Penyewa Baru</button>.
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Khusus <strong>Admin / Petugas</strong>: Akses masuk melalui Portal Admin dengan User: <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-bold">admin</code> | Sandi: <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-bold">admin123</code>.
+                    </p>
+                  </div>
+
                   {/* Alert Error / Success */}
                   {loginError && (
                     <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2 animate-in fade-in duration-150">

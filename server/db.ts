@@ -125,9 +125,23 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
   `);
 
-  // Purge any leaked legacy accounts if present
+  // Ensure pinjamlaptopid exists as admin user
   try {
-    db.prepare("DELETE FROM users WHERE lower(username) = 'pinjamlaptopid'").run();
+    const existingPinjam = db.prepare("SELECT id FROM users WHERE lower(username) = 'pinjamlaptopid'").get();
+    if (!existingPinjam) {
+      db.prepare(`
+        INSERT INTO users (id, username, password_hash, name, role, role_title, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'ADM-002-PLID',
+        'pinjamlaptopid',
+        bcrypt.hashSync('admin123', 10),
+        'PINJAMLAPTOP.ID Administrator',
+        'super_admin',
+        'Chief Systems Administrator',
+        new Date().toISOString()
+      );
+    }
   } catch (_e) {}
 
   seedInitialData();

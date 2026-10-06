@@ -69,10 +69,38 @@ export const AdminLoginForm: React.FC<AdminLoginFormProps> = ({
 
         {/* Form Area */}
         <div className="p-6 sm:p-8 space-y-6">
+          {/* Quick Credential Box */}
+          <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-0.5">
+              <span className="font-bold text-blue-950 flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-blue-600" />
+                Kredensial Default Administrator
+              </span>
+              <p className="text-[11px] text-blue-800">
+                User: <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200 text-blue-900">admin</span> &nbsp;|&nbsp; Sandi: <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200 text-blue-900">admin123</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setUsername('admin');
+                setPassword('admin123');
+              }}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-xs transition-colors cursor-pointer shrink-0"
+            >
+              Isi Otomatis
+            </button>
+          </div>
+
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in">
               <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+              <div className="space-y-1">
+                <span className="font-semibold block">{errorMessage}</span>
+                <span className="text-[11px] text-rose-700 block">
+                  Pastikan menggunakan ID: <strong>admin</strong> dan Password: <strong>admin123</strong> (atau klik tombol "Isi Otomatis" di atas).
+                </span>
+              </div>
             </div>
           )}
 

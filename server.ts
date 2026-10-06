@@ -71,7 +71,14 @@ app.use(
 
 // Cookie parser and body parsers
 app.use(cookieParser(process.env.SESSION_SECRET || 'pinjamlaptop-secret-key-v1'));
-app.use(express.json({ limit: '15mb' }));
+app.use(
+  express.json({
+    limit: '15mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    }
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Attach authenticated user session
