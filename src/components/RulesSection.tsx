@@ -75,10 +75,30 @@ export const RulesSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Poin 3: Batas Waktu & Jam Pengembalian */}
+        {/* Poin 3: Kehadiran Wajib Penyewa di Lokasi */}
+        <div className="bg-rose-50/80 p-4 sm:p-5 rounded-2xl border border-rose-200 shadow-xs flex items-start gap-3.5">
+          <div className="w-8 h-8 rounded-xl bg-rose-600 text-white font-bold flex items-center justify-center text-sm shrink-0 mt-0.5">
+            3
+          </div>
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-rose-950 text-sm sm:text-base">
+                Penyewa Wajib Hadir di Lokasi (Tidak Bisa Diwakilkan)
+              </h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900 uppercase">
+                Wajib
+              </span>
+            </div>
+            <p className="text-xs text-rose-900 leading-relaxed">
+              Saat serah terima unit laptop (baik di Store Hub maupun via Kurir Antar), <strong>Penyewa Asli WAJIB hadir langsung di lokasi</strong>. Penyerahan unit <strong>TIDAK BISA DIWAKILKAN</strong> kepada siapa pun. Jika penyewa tidak hadir di lokasi, unit tidak bisa diserahkan dan uang transaksi sewa hangus 100%.
+            </p>
+          </div>
+        </div>
+
+        {/* Poin 4: Batas Waktu & Jam Pengembalian */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-start gap-3.5">
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-sm shrink-0 mt-0.5">
-            3
+            4
           </div>
           <div className="space-y-1 flex-1">
             <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
@@ -91,30 +111,30 @@ export const RulesSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Poin 4: Denda Keterlambatan */}
+        {/* Poin 5: Denda Keterlambatan */}
         <div className="bg-rose-50/80 p-4 sm:p-5 rounded-2xl border border-rose-200 shadow-xs flex items-start gap-3.5">
           <div className="w-8 h-8 rounded-xl bg-rose-600 text-white font-bold flex items-center justify-center text-sm shrink-0 mt-0.5">
-            4
+            5
           </div>
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-rose-950 text-sm sm:text-base">
-                Denda Keterlambatan: Rp 20.000 / Jam
+                Denda Keterlambatan: Toleransi 1 Jam (Rp 20.000 / Jam)
               </h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900 uppercase">
-                Mengikat
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 uppercase">
+                Toleransi 1 Jam
               </span>
             </div>
             <p className="text-xs text-rose-900 leading-relaxed">
-              Keterlambatan pengembalian unit dikenakan denda flat Rp 20.000 per 1 jam berjalan dan wajib dilunasi saat pengembalian tanpa penundaan (alasan macet, cuaca, atau kesibukan mendadak tidak dapat menghapus denda).
+              Terdapat <strong>toleransi pengembalian maksimal 1 jam</strong> untuk mengantisipasi situasi yang tidak bisa diprediksi (cuaca buruk/hujan, musibah, atau kemacetan lalu lintas). Jika pengembalian melebihi batas toleransi 1 jam, dikenakan denda flat <strong>Rp 20.000 / jam berjalan</strong> dan wajib dilunasi saat pengembalian tanpa penundaan.
             </p>
           </div>
         </div>
 
-        {/* Poin 5: Surat Perjanjian Sewa (SPK) */}
+        {/* Poin 6: Surat Perjanjian Sewa (SPK) */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-start gap-3.5">
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-sm shrink-0 mt-0.5">
-            5
+            6
           </div>
           <div className="space-y-1 flex-1">
             <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">

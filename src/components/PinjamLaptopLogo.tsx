@@ -153,7 +153,7 @@ export const PinjamLaptopLogo: React.FC<PinjamLaptopLogoProps> = ({
           </div>
           {showSubtitle && (
             <p className={`text-[10px] sm:text-xs font-bold tracking-wider mt-0.5 ${inverted ? 'text-blue-200' : 'text-sky-600'}`}>
-              0877-2596-4455 | JL. TAMAN BOROBUDUR INDAH B-20
+              0877-2556-4455 | JL. TAMAN BOROBUDUR INDAH B-20
             </p>
           )}
         </div>
@@ -176,7 +176,7 @@ export const PinjamLaptopLogo: React.FC<PinjamLaptopLogoProps> = ({
         </div>
         {showSubtitle && (
           <p className={`text-[10px] sm:text-xs font-bold tracking-wider mt-1 leading-none ${inverted ? 'text-sky-200' : 'text-sky-600'}`}>
-            0877-2596-4455 | JL. TAMAN BOROBUDUR INDAH B-20
+            0877-2556-4455 | JL. TAMAN BOROBUDUR INDAH B-20
           </p>
         )}
       </div>

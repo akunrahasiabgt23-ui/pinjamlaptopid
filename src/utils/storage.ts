@@ -1036,6 +1036,7 @@ export const calculateOverdueAndLateFee = (order: RentalOrder) => {
     return {
       isStarted: isStarted,
       isOverdue: false,
+      inGracePeriod: false,
       lateHours: 0,
       lateFee: 0,
       hourlyRate: order.laptop.lateFeePerHour || 20000,
@@ -1044,8 +1045,11 @@ export const calculateOverdueAndLateFee = (order: RentalOrder) => {
     };
   }
 
-  const lateHoursExact = diffMs / (1000 * 60 * 60);
-  const lateHoursRounded = Math.max(1, Math.ceil(lateHoursExact));
+  // Toleransi 1 jam untuk situasi tak terduga (cuaca buruk, musibah, kemacetan)
+  const oneHourMs = 60 * 60 * 1000;
+  const inGracePeriod = diffMs <= oneHourMs;
+  const lateHoursExact = inGracePeriod ? 0 : (diffMs - oneHourMs) / oneHourMs;
+  const lateHoursRounded = inGracePeriod ? 0 : Math.max(1, Math.ceil(lateHoursExact));
   const hourlyRate = order.laptop.lateFeePerHour || 20000;
   const lateFee = lateHoursRounded * hourlyRate;
 
@@ -1058,6 +1062,7 @@ export const calculateOverdueAndLateFee = (order: RentalOrder) => {
   return {
     isStarted: true,
     isOverdue: true,
+    inGracePeriod,
     lateHours: lateHoursRounded,
     lateFee,
     hourlyRate,
@@ -1271,4 +1276,24 @@ export const getFinancialLedgerData = (
   };
 
   return { items, summary };
+};
+
+/**
+ * Format Nomor SPK Resmi Sesuai Cabang & Tanggal
+ * Format: spk/PLID{BRANCH}/{YYYY}/{MM}/{SEQ}
+ * Contoh: spk/PLIDMLG/2026/10/001
+ */
+export const formatSpkNumber = (order: { id: string; branchCity?: string; laptop?: { branchCity?: string }; createdAt?: number | string }): string => {
+  const d = new Date(order.createdAt || Date.now());
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const city = (order.branchCity || order.laptop?.branchCity || 'Malang').toUpperCase();
+  let branchCode = 'MLG';
+  if (city.includes('SIDOARJO') || city.includes('SDA')) branchCode = 'SDA';
+  else if (city.includes('BEKASI') || city.includes('BKS')) branchCode = 'BKS';
+  else if (city.includes('JAKARTA') || city.includes('JKT')) branchCode = 'JKT';
+
+  const digitsOnly = order.id.replace(/\D/g, '');
+  const seq = digitsOnly ? digitsOnly.slice(-3).padStart(3, '0') : '001';
+  return `spk/PLID${branchCode}/${year}/${month}/${seq}`;
 };

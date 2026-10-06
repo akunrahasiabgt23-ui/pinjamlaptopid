@@ -368,7 +368,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         Kata Sandi
                       </label>
                       <a
-                        href="https://wa.me/6287725964455?text=Halo%20Admin%20PINJAMLAPTOP.ID,%20saya%20lupa%20password%20akun%20penyewa%20saya"
+                        href="https://wa.me/6287725564455?text=Halo%20Admin%20PINJAMLAPTOP.ID,%20saya%20lupa%20password%20akun%20penyewa%20saya"
                         target="_blank"
                         rel="noreferrer"
                         className="text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors"

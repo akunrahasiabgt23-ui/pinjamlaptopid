@@ -10,9 +10,24 @@ import { attachSessionMiddleware, cleanExpiredSessions } from './server/auth';
 import { apiRouter } from './server/routes';
 
 const app = express();
-const PORT = process.env.NODE_ENV === 'production' && process.env.PORT && process.env.PORT !== '8080' 
-  ? process.env.PORT 
-  : 3000;
+function resolvePort(): number {
+  const portArgIdx = process.argv.indexOf('--port');
+  if (portArgIdx !== -1 && process.argv[portArgIdx + 1]) {
+    const parsed = parseInt(process.argv[portArgIdx + 1], 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (process.env.DEFAULT_APP_PORT) {
+    const parsed = parseInt(process.env.DEFAULT_APP_PORT, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (process.env.PORT && process.env.PORT !== '8080') {
+    const parsed = parseInt(process.env.PORT, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return 3000;
+}
+
+const PORT = resolvePort();
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Trust proxy for reverse proxy setups (Nginx, Webuzo, Cloud Run)
@@ -77,7 +92,7 @@ async function startServer() {
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR === 'true' ? false : undefined
+        hmr: false
       },
       appType: 'spa'
     });
@@ -94,9 +109,22 @@ async function startServer() {
     }
   }
 
-  app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`[Server] Pinjamlaptop Full-Stack Server running on http://0.0.0.0:${PORT} (${isProduction ? 'production' : 'development'})`);
+  const server = app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`[Server] Pinjamlaptop Server running on http://0.0.0.0:${PORT} (${isProduction ? 'production' : 'development'})`);
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
+    console.log(`  ➜  Network: http://0.0.0.0:${PORT}/`);
   });
+
+  const handleShutdown = (signal: string) => {
+    console.log(`[Server] Received ${signal}, shutting down gracefully...`);
+    server.close(() => {
+      console.log('[Server] HTTP server closed.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }
 
 startServer().catch((err) => {

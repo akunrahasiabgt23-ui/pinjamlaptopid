@@ -162,11 +162,11 @@ export default function App() {
       {/* Floating WhatsApp Bantuan Button */}
       <aside aria-label="Bantuan WhatsApp" className="fixed bottom-20 left-4 sm:left-6 z-30">
         <a
-          href="https://wa.me/6287725964455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan%20sewa%20laptop"
+          href="https://wa.me/6287725564455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan%20sewa%20laptop"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full shadow-lg hover:shadow-blue-600/30 transition-all border border-blue-400 group cursor-pointer"
-          title="Bantuan WhatsApp Langsung: 0877-2596-4455"
+          title="Bantuan WhatsApp Langsung: 0877-2556-4455"
         >
           <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
             <MessageCircle className="w-4 h-4 text-white" />

@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <div className="pt-4 border-t border-slate-200 mt-4 space-y-2">
                 <a
-                  href="https://wa.me/6287725964455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan%20sewa%20laptop"
+                  href="https://wa.me/6287725564455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan%20sewa%20laptop"
                   target="_blank"
                   rel="noreferrer"
                   className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-colors"

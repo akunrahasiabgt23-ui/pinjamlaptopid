@@ -11,8 +11,10 @@ import {
 } from '../types';
 import { 
   formatRupiah, calculateRentalPricing, createNewOrder, updateOrder,
-  authenticateMember, registerOrUpdateMember, getMemberById, getStoredCustomerSession
+  authenticateMember, registerOrUpdateMember, getMemberById, getStoredCustomerSession,
+  formatSpkNumber
 } from '../utils/storage';
+import { printOrderAgreement } from '../utils/printContract';
 import { STORE_HUBS, DOMICILE_OPTIONS_BY_BRANCH, isDomicileAllowedForBranch, BRANCH_LOCATIONS } from '../data/laptops';
 import { PinjamLaptopLogo } from './PinjamLaptopLogo';
 
@@ -135,7 +137,10 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
 
     // Auto-fill emergency contacts
     if (m.emergency1Name) setEmergency1Name(m.emergency1Name);
-    if (m.emergency1Relation) setEmergency1Relation(m.emergency1Relation);
+    if (m.emergency1Relation) {
+      const allowedFamilyRel = ['Orang Tua / Ayah', 'Orang Tua / Ibu', 'Suami / Istri', 'Saudara Kandung'];
+      setEmergency1Relation(allowedFamilyRel.includes(m.emergency1Relation) ? m.emergency1Relation : 'Orang Tua / Ayah');
+    }
     if (m.emergency1Phone) setEmergency1Phone(m.emergency1Phone);
     if (m.emergency2Name) setEmergency2Name(m.emergency2Name);
     if (m.emergency2Relation) setEmergency2Relation(m.emergency2Relation);
@@ -204,20 +209,33 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
       return false;
     }
 
-    // 2. Validasi Data Diri (Ringkas & Cepat)
+    // 2. Validasi Data Diri
     if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
       alert('Mohon lengkapi Nama Lengkap, Nomor WhatsApp, dan Alamat Anda!');
       return false;
     }
 
-    // Default otomatis jika email atau kontak tambahan kosong
+    // 3. Validasi 2 Kontak Darurat (Wajib)
+    if (!emergency1Name.trim() || !emergency1Phone.trim()) {
+      alert('Mohon lengkapi Nama Lengkap dan Nomor HP Kontak Darurat 1 (Keluarga Inti)!');
+      return false;
+    }
+
+    const allowedEmergency1 = ['Orang Tua / Ayah', 'Orang Tua / Ibu', 'Suami / Istri', 'Saudara Kandung'];
+    if (!allowedEmergency1.includes(emergency1Relation)) {
+      alert('Kontak Darurat 1 wajib diisi Keluarga Inti (Orang Tua / Suami / Istri / Saudara Kandung). Teman atau atasan kantor tidak diperbolehkan!');
+      return false;
+    }
+
+    if (!emergency2Name.trim() || !emergency2Phone.trim()) {
+      alert('Mohon lengkapi Nama Lengkap dan Nomor HP Kontak Darurat 2!');
+      return false;
+    }
+
+    // Default otomatis jika email kosong
     if (!customerEmail.trim()) {
       setCustomerEmail(`${customerPhone.trim().replace(/\D/g, '')}@pinjamlaptop.id`);
     }
-    if (!emergency1Name.trim()) setEmergency1Name(customerName.trim());
-    if (!emergency1Phone.trim()) setEmergency1Phone(customerPhone.trim());
-    if (!emergency2Name.trim()) setEmergency2Name('-');
-    if (!emergency2Phone.trim()) setEmergency2Phone('-');
 
     return true;
   };
@@ -380,7 +398,11 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
   };
 
   const handlePrintAgreement = () => {
-    window.print();
+    if (pendingCompletedOrder) {
+      printOrderAgreement(pendingCompletedOrder, agreementConsciouslyAcknowledged);
+    } else {
+      window.print();
+    }
   };
 
   const handleCompleteAgreement = () => {
@@ -658,6 +680,14 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                       </p>
                     </div>
                   </label>
+                </div>
+
+                {/* Info Kehadiran Penyewa Wajib di Lokasi */}
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Penting:</strong> Saat serah terima laptop (baik Diantar Kurir maupun Ambil di Hub), <strong>Penyewa Asli wajib hadir di lokasi</strong>. Penyerahan unit <strong>tidak bisa diwakilkan</strong> kepada orang lain.
+                  </span>
                 </div>
 
                 {deliveryMethod === 'self_pickup' && (
@@ -1004,32 +1034,130 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                 )}
               </div>
 
-              {/* Kontak Tambahan / Kerabat (Opsional & Ringkas) */}
-              <div className="pt-3 border-t border-slate-200">
-                <div className="flex items-center justify-between mb-1.5">
+              {/* 2 KONTAK DARURAT (WAJIB) */}
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-blue-600" />
+                    <Phone className="w-4 h-4 text-blue-600" />
                     <span className="text-xs font-bold text-slate-800">
-                      Kontak Kerabat / Darurat (Opsional)
+                      2. Kontak Darurat (Wajib)
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400">Untuk koordinasi pengiriman</span>
+                  <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-bold border border-amber-200">
+                    Wajib 2 Kontak
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <input
-                    type="text"
-                    placeholder="Nama kerabat / rekan (opsional)"
-                    value={emergency1Name}
-                    onChange={(e) => setEmergency1Name(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Nomor HP kerabat (opsional)"
-                    value={emergency1Phone}
-                    onChange={(e) => setEmergency1Phone(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
-                  />
+                <p className="text-[11px] text-slate-500">
+                  Sesuai regulasi keamanan persewaan, cantumkan 2 nomor keluarga/rekan aktif yang dapat dihubungi:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Kontak Darurat 1 (Keluarga Inti: Opsi 1-4 saja, Teman/Atasan TIDAK BOLEH) */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-blue-700">
+                        Kontak Darurat 1
+                      </span>
+                      <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                        Keluarga Inti (Wajib)
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        placeholder="Nama keluarga inti"
+                        value={emergency1Name}
+                        onChange={(e) => setEmergency1Name(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] text-slate-600 font-semibold">Hubungan</label>
+                        <span className="text-[10px] text-rose-600 font-semibold">Teman/atasan dilarang</span>
+                      </div>
+                      <select
+                        value={emergency1Relation}
+                        onChange={(e) => setEmergency1Relation(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium"
+                      >
+                        <option value="Orang Tua / Ayah">1. Orang Tua / Ayah</option>
+                        <option value="Orang Tua / Ibu">2. Orang Tua / Ibu</option>
+                        <option value="Suami / Istri">3. Suami / Istri</option>
+                        <option value="Saudara Kandung">4. Saudara Kandung</option>
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        Khusus opsi 1-4 keluarga inti. Teman kantor/atasan hanya boleh untuk Kontak Darurat 2.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Nomor HP Aktif</label>
+                      <input
+                        type="tel"
+                        placeholder="0812-XXXX-XXXX"
+                        value={emergency1Phone}
+                        onChange={(e) => setEmergency1Phone(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Kontak Darurat 2 */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-blue-700">
+                        Kontak Darurat 2
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-1.5 py-0.2 rounded">
+                        Keluarga / Rekan
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        placeholder="Nama kerabat / rekan"
+                        value={emergency2Name}
+                        onChange={(e) => setEmergency2Name(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Hubungan</label>
+                      <select
+                        value={emergency2Relation}
+                        onChange={(e) => setEmergency2Relation(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium"
+                      >
+                        <option value="Orang Tua / Ayah">Orang Tua / Ayah</option>
+                        <option value="Orang Tua / Ibu">Orang Tua / Ibu</option>
+                        <option value="Suami / Istri">Suami / Istri</option>
+                        <option value="Saudara Kandung">Saudara Kandung</option>
+                        <option value="Teman Kantor / Atasan">Teman Kantor / Atasan</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Nomor HP Aktif</label>
+                      <input
+                        type="tel"
+                        placeholder="0812-XXXX-XXXX"
+                        value={emergency2Phone}
+                        onChange={(e) => setEmergency2Phone(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1249,6 +1377,9 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                   <p>
                     <strong className="text-rose-700 font-bold">2. Ketidaksesuaian Deposit:</strong> Jika penyewa memilih opsi uang deposit namun bukti transfer deposit bermasalah atau tidak valid, transaksi dibatalkan dan uang administrasi hangus 100%.
                   </p>
+                  <p>
+                    <strong className="text-rose-700 font-bold">3. Penyewa Tidak Hadir di Lokasi (Tidak Bisa Diwakilkan):</strong> Saat penyerahan unit (baik di Store Hub maupun via Kurir Pengantar), <strong className="text-rose-700 underline">PENYEWA ASLI WAJIB HADIR DI LOKASI</strong> secara pribadi. Jika penyewa tidak hadir di lokasi saat serah terima, <strong className="text-rose-700 underline">PENYERAHAN UNIT TIDAK BISA DILAKUKAN</strong>, tidak dapat diwakilkan kepada siapa pun, dan seluruh <strong className="text-rose-700 underline">UANG TRANSAKSI SEWA HANGUS 100%</strong>.
+                  </p>
                   <p className="text-[11px] text-slate-500">
                     Sistem Pinjamlaptop terintegrasi dengan verifikasi database kependudukan nasional untuk mencegah penggelapan aset unit bernilai puluhan juta rupiah.
                   </p>
@@ -1263,7 +1394,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                     className="mt-0.5 w-4 h-4 text-rose-600 rounded border-rose-300 focus:ring-rose-500"
                   />
                   <span className="text-xs font-bold text-rose-950">
-                    SAYA MENGERTI & MENYETUJUI bahwa jika 2 identitas asli fisik atau uang deposit saya tidak sesuai/palsu, maka seluruh uang transaksi yang saya bayarkan akan HANGUS 100% tanpa pengembalian dana.
+                    SAYA MENGERTI & MENYETUJUI bahwa jika identitas tidak sesuai, penyewa tidak hadir di lokasi saat serah terima (tidak bisa diwakilkan), atau deposit bermasalah, maka seluruh uang transaksi yang saya bayarkan akan HANGUS 100% tanpa pengembalian dana.
                   </span>
                 </label>
               </div>
@@ -1349,10 +1480,10 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                   </div>
                   <ul className="list-disc pl-4 space-y-1 text-[11px] leading-relaxed text-amber-900">
                     <li>
-                      <strong>Denda berjalan saat masa sewa berakhir</strong> (terhitung sejak jam yang sama saat menerima unit yang disewakan) sebesar <strong>Rp 20.000 / 1 jam</strong> berjalan.
+                      <strong>Toleransi Keterlambatan 1 Jam:</strong> Terdapat <strong>toleransi 1 jam</strong> saat pengembalian untuk situasi yang tidak bisa diprediksi (seperti cuaca buruk/hujan, musibah, atau kemacetan lalu lintas).
                     </li>
                     <li>
-                      <strong>DENDA WAJIB DIBAYARKAN BAGAIMANAPUN SITUASINYA TANPA PENGECUALIAN</strong> (termasuk alasan kemacetan lalu lintas, cuaca buruk/hujan, lupa waktu, maupun urusan mendadak).
+                      <strong>Denda Setelah Batas Toleransi:</strong> Jika keterlambatan melewati batas toleransi 1 jam, dikenakan denda flat <strong>Rp 20.000 / 1 jam berjalan</strong> dan wajib dilunasi saat pengembalian.
                     </li>
                     <li>
                       Setelah pembayaran online Anda terkonfirmasi, <strong>Surat Perjanjian Sewa Menyewa (SPK)</strong> akan langsung diperlihatkan di layar untuk <strong>wajib dibaca dan dicentang secara sadar</strong>.
@@ -1415,13 +1546,13 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                         Layanan Rental Laptop Resmi & Transparan
                       </p>
                       <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5">
-                        Jl. Taman Borobudur Indah B-20 • WhatsApp: 0877-2596-4455 • Website: pinjamlaptop.id
+                        Jl. Taman Borobudur Indah B-20 • WhatsApp: 0877-2556-4455 • Email: pinjamlaptopid@gmail.com • Website: pinjamlaptop.id
                       </p>
                     </div>
                   </div>
                   <div className="text-right text-[11px] text-slate-600 flex-shrink-0">
                     <p className="font-bold text-slate-900 uppercase">SURAT PERJANJIAN SEWA (SPK)</p>
-                    <p className="font-mono">NO: SPK/PL/{new Date().getFullYear()}/{pendingCompletedOrder.id.replace('PL-', '')}</p>
+                    <p className="font-mono font-bold text-slate-800">NO: {formatSpkNumber(pendingCompletedOrder)}</p>
                     <p>Tanggal: {new Date(pendingCompletedOrder.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   </div>
                 </div>
@@ -1430,6 +1561,9 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                   <h4 className="text-sm sm:text-base font-black uppercase text-slate-950 tracking-wide underline underline-offset-4">
                     SURAT PERJANJIAN SEWA MENYEWA LAPTOP
                   </h4>
+                  <p className="text-[11px] text-slate-600 font-mono font-semibold">
+                    Nomor: {formatSpkNumber(pendingCompletedOrder)}
+                  </p>
                   <p className="text-[11px] text-slate-600">
                     Perjanjian Pengikatan Hak Guna Pakai Unit Komputer Jinjing & Aksesoris
                   </p>
@@ -1564,9 +1698,19 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
                     <div className="space-y-8">
                       <p className="font-bold text-slate-900">PIHAK PERTAMA (Pemberi Sewa)</p>
                       <div>
-                        <span className="px-3 py-1 rounded border-2 border-emerald-600 text-emerald-700 font-extrabold text-[11px] tracking-wider uppercase inline-block rotate-[-3deg]">
-                          ✓ RESMI DISETUJUI
-                        </span>
+                        {pendingCompletedOrder.status === 'verified_preparing' ||
+                         pendingCompletedOrder.status === 'ready_for_pickup' ||
+                         pendingCompletedOrder.status === 'in_delivery' ||
+                         pendingCompletedOrder.status === 'active_rental' ||
+                         pendingCompletedOrder.status === 'completed' ? (
+                          <span className="px-3 py-1 rounded border-2 border-emerald-600 text-emerald-700 font-extrabold text-[11px] tracking-wider uppercase inline-block rotate-[-3deg]">
+                            ✓ RESMI DISETUJUI
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded border-2 border-amber-500 text-amber-800 bg-amber-50/80 font-bold text-[11px] tracking-wider uppercase inline-block">
+                            ⏳ Menunggu Approval Petugas
+                          </span>
+                        )}
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 underline">PINJAMLAPTOP.ID</p>

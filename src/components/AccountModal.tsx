@@ -157,7 +157,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               Pusat Dukungan & Lokasi Google Maps
             </span>
             <a
-              href="https://wa.me/6287725964455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan"
+              href="https://wa.me/6287725564455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan"
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
@@ -168,7 +168,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 </div>
                 <div>
                   <div className="font-bold text-slate-800 text-xs">WhatsApp Customer Service</div>
-                  <div className="text-[11px] text-slate-500">0877-2596-4455 (Setiap Hari)</div>
+                  <div className="text-[11px] text-slate-500">0877-2556-4455 (Setiap Hari)</div>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400" />

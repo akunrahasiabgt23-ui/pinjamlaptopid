@@ -1,7 +1,8 @@
 import React from 'react';
 import { Printer, X, FileText } from 'lucide-react';
 import { RentalOrder } from '../types';
-import { formatRupiah } from '../utils/storage';
+import { formatRupiah, formatSpkNumber } from '../utils/storage';
+import { printOrderAgreement } from '../utils/printContract';
 import { PinjamLaptopLogo } from './PinjamLaptopLogo';
 
 interface RentalAgreementModalProps {
@@ -24,7 +25,7 @@ export const RentalAgreementModal: React.FC<RentalAgreementModalProps> = ({
   if (!isOpen || !order) return null;
 
   const handlePrint = () => {
-    window.print();
+    printOrderAgreement(order, acknowledged || order.agreementReadAndAcknowledged);
   };
 
   const createdDate = new Date(order.createdAt).toLocaleDateString('id-ID', {
@@ -33,7 +34,7 @@ export const RentalAgreementModal: React.FC<RentalAgreementModalProps> = ({
     year: 'numeric'
   });
 
-  const contractNumber = `SPK/PL/${new Date(order.createdAt).getFullYear()}/${order.id.replace('ORD-', '')}`;
+  const contractNumber = formatSpkNumber(order);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static">
@@ -86,7 +87,7 @@ export const RentalAgreementModal: React.FC<RentalAgreementModalProps> = ({
                     Layanan Rental Laptop Resmi & Transparan
                   </p>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5">
-                    Jl. Taman Borobudur Indah B-20 • WhatsApp: 0877-2596-4455 • Website: pinjamlaptop.id
+                    Jl. Taman Borobudur Indah B-20 • WhatsApp: 0877-2556-4455 • Email: pinjamlaptopid@gmail.com • Website: pinjamlaptop.id
                   </p>
                 </div>
               </div>
@@ -185,9 +186,9 @@ export const RentalAgreementModal: React.FC<RentalAgreementModalProps> = ({
                   4
                 </span>
                 <div>
-                  <strong className="text-rose-950 block">Denda Keterlambatan: Rp 20.000 / Jam</strong>
+                  <strong className="text-rose-950 block">Denda Keterlambatan: Toleransi 1 Jam (Rp 20.000 / Jam)</strong>
                   <p className="text-rose-900 text-[11px] mt-0.5 leading-relaxed">
-                    Keterlambatan dikenakan denda Rp 20.000 per 1 jam berjalan dan wajib dilunasi saat pengembalian unit tanpa alasan penundaan (macet, cuaca, urusan mendadak).
+                    Pengembalian unit memiliki <strong>toleransi 1 jam</strong> untuk situasi yang tidak dapat diprediksi (cuaca buruk, musibah, atau kemacetan lalu lintas). Melewati batas toleransi 1 jam, dikenakan denda flat Rp 20.000 per 1 jam berjalan dan wajib dilunasi saat pengembalian.
                   </p>
                 </div>
               </div>
@@ -217,6 +218,19 @@ export const RentalAgreementModal: React.FC<RentalAgreementModalProps> = ({
                   </p>
                 </div>
               </div>
+
+              {/* Poin 7 */}
+              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
+                <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                  7
+                </span>
+                <div>
+                  <strong className="text-amber-950 block">Kehadiran Penyewa Wajib di Lokasi (Tidak Bisa Diwakilkan)</strong>
+                  <p className="text-amber-900 text-[11px] mt-0.5 leading-relaxed">
+                    Serah terima laptop wajib dihadiri langsung oleh Penyewa Asli di lokasi (baik diantar Kurir maupun Ambil di Hub). Penyerahan unit tidak dapat diwakilkan kepada siapa pun. Jika penyewa tidak hadir, unit tidak dapat diserahkan.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -238,9 +252,15 @@ export const RentalAgreementModal: React.FC<RentalAgreementModalProps> = ({
               <div className="space-y-8">
                 <p className="font-bold text-slate-900">PIHAK PERTAMA (Pemberi Sewa)</p>
                 <div className="inline-block relative">
-                  <span className="px-3 py-1 rounded border-2 border-emerald-600 text-emerald-700 font-extrabold text-[11px] tracking-wider uppercase inline-block rotate-[-3deg]">
-                    ✓ RESMI DISETUJUI
-                  </span>
+                  {order.status === 'verified_preparing' || order.status === 'ready_for_pickup' || order.status === 'in_delivery' || order.status === 'active_rental' || order.status === 'completed' ? (
+                    <span className="px-3 py-1 rounded border-2 border-emerald-600 text-emerald-700 font-extrabold text-[11px] tracking-wider uppercase inline-block rotate-[-3deg]">
+                      ✓ RESMI DISETUJUI
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded border-2 border-amber-500 text-amber-700 font-bold text-[11px] tracking-wider uppercase inline-block">
+                      ⏳ Menunggu Approval Petugas
+                    </span>
+                  )}
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 underline">PINJAMLAPTOP.ID</p>

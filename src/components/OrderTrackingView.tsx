@@ -718,7 +718,9 @@ export const OrderTrackingView: React.FC<OrderTrackingViewProps> = ({
                     <span>Status Denda:</span>
                     <span className="font-bold">
                       {overdueInfo?.isOverdue 
-                        ? `BERJALAN (Terlambat ${overdueInfo.lateHours} Jam)` 
+                        ? overdueInfo.inGracePeriod
+                          ? 'Masa Toleransi 1 Jam (Denda Rp 0 - cuaca/musibah/macet)'
+                          : `BERJALAN (Terlambat ${overdueInfo.lateHours} Jam setelah toleransi)` 
                         : !currentOrder.rentalStartedAt 
                         ? 'Menunggu Admin Mulai Sewa' 
                         : 'Masa Sewa Belum Berakhir (Denda Rp 0)'}
@@ -726,13 +728,13 @@ export const OrderTrackingView: React.FC<OrderTrackingViewProps> = ({
                   </div>
                   <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-slate-200">
                     <span>Akumulasi Denda Berjalan:</span>
-                    <span className={overdueInfo?.isOverdue ? 'text-rose-600 text-base font-black' : 'text-slate-800'}>
+                    <span className={overdueInfo?.isOverdue && !overdueInfo?.inGracePeriod ? 'text-rose-600 text-base font-black' : 'text-slate-800'}>
                       {formatRupiah(overdueInfo?.lateFee || 0)}
                     </span>
                   </div>
                   {overdueInfo?.isOverdue && (
                     <p className="text-[10px] text-rose-800 font-medium pt-1 border-t border-rose-200 leading-snug">
-                      * Sesuai Surat Perjanjian, denda keterlambatan <strong>wajib dibayarkan bagaimanapun situasinya</strong> tanpa pengecualian (macet, cuaca, urusan mendadak).
+                      * Terdapat <strong>toleransi keterlambatan 1 jam</strong> untuk situasi yang tidak bisa diprediksi (cuaca buruk, musibah, kemacetan). Melewati 1 jam toleransi, denda Rp 20.000/jam wajib dilunasi saat pengembalian.
                     </p>
                   )}
                 </div>

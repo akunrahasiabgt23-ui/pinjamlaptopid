@@ -612,12 +612,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         </p>
                         {overdue.isOverdue && (
                           <div className="mt-1 space-y-0.5">
-                            <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md inline-flex items-center gap-1 animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
-                              Denda Berjalan: +{overdue.lateHours} Jam ({formatRupiah(overdue.lateFee)})
-                            </span>
-                            <span className="text-[9px] text-rose-600 block font-medium">
-                              Tarif Rp 20.000/jam (Terhitung sejak jam yang sama saat menerima unit sewa)
+                            {overdue.inGracePeriod ? (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                                Toleransi 1 Jam (Denda Rp 0)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md inline-flex items-center gap-1 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                                Denda Berjalan: +{overdue.lateHours} Jam ({formatRupiah(overdue.lateFee)})
+                              </span>
+                            )}
+                            <span className="text-[9px] text-slate-500 block font-medium">
+                              Toleransi 1 jam (cuaca/musibah/macet). Melewati 1 jam: Rp 20.000/jam
                             </span>
                           </div>
                         )}
