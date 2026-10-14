@@ -1,242 +1,382 @@
-import React, { useState } from 'react';
-import { Navbar } from './components/Navbar';
-import { BottomNav } from './components/BottomNav';
-import { AccountModal } from './components/AccountModal';
-import { CatalogSection } from './components/CatalogSection';
-import { LaptopDetailModal } from './components/LaptopDetailModal';
-import { RentalBookingModal } from './components/RentalBookingModal';
-import { OrderTrackingView } from './components/OrderTrackingView';
-import { AdminPortal } from './components/AdminPortal';
-import { RulesSection } from './components/RulesSection';
-import { HubsSection } from './components/HubsSection';
-import { PinjamLaptopLogo } from './components/PinjamLaptopLogo';
-import { Laptop, RentalOrder } from './types';
-import { getStoredAdminSession } from './utils/storage';
-import { AdminLoginModal } from './components/admin/AdminLoginModal';
-import { CustomerLoginModal } from './components/CustomerLoginModal';
+import React, { useState, useEffect } from 'react';
 import { 
-  ShieldCheck, Clock, Truck, Headset, 
-  CheckCircle2, MessageCircle, Phone, Sparkles, ChevronRight,
-  HelpCircle, MapPin
-} from 'lucide-react';
+  Laptop, 
+  Customer, 
+  FinancialTransaction, 
+  DeliveryLog, 
+  PettyCashTransaction, 
+  Employee, 
+  ServiceRecord, 
+  UnitMovementLog, 
+  PayrollRecord, 
+  UserAuthSession,
+  BranchCity,
+  RentalOrder
+} from './types';
+import {
+  getStoredLaptops, saveStoredLaptops,
+  getStoredCustomers, saveStoredCustomers,
+  getStoredEmployees, saveStoredEmployees,
+  getStoredServices, saveStoredServices,
+  getStoredDeliveries, saveStoredDeliveries,
+  getStoredPettyCash, saveStoredPettyCash,
+  getStoredFinance, saveStoredFinance,
+  getStoredMovements, saveStoredMovements,
+  getStoredPayroll, saveStoredPayroll,
+  getStoredRentalOrders, saveStoredRentalOrders,
+  getStoredSession, saveStoredSession,
+  getStoredSelectedBranch, saveStoredSelectedBranch,
+  resetAllErpData,
+  calculateDaysElapsed
+} from './utils/erpStorage';
+
+// Component Modules
+import { ErpNavbar } from './components/erp/ErpNavbar';
+import { DashboardOverview } from './components/erp/DashboardOverview';
+import { RentalOrdersManager } from './components/erp/RentalOrdersManager';
+import { RentalWorkflowModal } from './components/erp/RentalWorkflowModal';
+import { LaptopsManager } from './components/erp/LaptopsManager';
+import { CustomersManager } from './components/erp/CustomersManager';
+import { DeliveryManager } from './components/erp/DeliveryManager';
+import { PettyCashManager } from './components/erp/PettyCashManager';
+import { TechnicianServiceManager } from './components/erp/TechnicianServiceManager';
+import { UnitMovementsManager } from './components/erp/UnitMovementsManager';
+import { GeneralFinanceManager } from './components/erp/GeneralFinanceManager';
+import { EmployeesManager } from './components/erp/EmployeesManager';
+import { PayrollManager } from './components/erp/PayrollManager';
+import { AuthModal } from './components/erp/AuthModal';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'catalog' | 'tracking' | 'admin' | 'rules' | 'hubs'>('catalog');
-  const [selectedLaptopForDetail, setSelectedLaptopForDetail] = useState<Laptop | null>(null);
-  const [selectedLaptopForRental, setSelectedLaptopForRental] = useState<Laptop | null>(null);
-  const [activeTrackingOrderId, setActiveTrackingOrderId] = useState<string>('PL-8821-JKT');
-  const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
-  const [showAccountModal, setShowAccountModal] = useState<boolean>(false);
-  const [showCustomerLoginModal, setShowCustomerLoginModal] = useState<boolean>(false);
-  const [showBookingSuccessToast, setShowBookingSuccessToast] = useState<{ show: boolean; orderId: string }>({
-    show: false,
-    orderId: ''
-  });
+  // Navigation & Session State
+  const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const [selectedBranch, setSelectedBranch] = useState<BranchCity | 'Semua'>(() => getStoredSelectedBranch());
+  const [session, setSession] = useState<UserAuthSession>(() => getStoredSession());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  const handleNavigate = (view: 'catalog' | 'tracking' | 'admin' | 'rules' | 'hubs') => {
-    if (view === 'admin') {
-      handleAdminAccess();
-      return;
-    }
-    setCurrentView(view);
+  // Core Data States
+  const [laptops, setLaptops] = useState<Laptop[]>(() => getStoredLaptops());
+  const [customers, setCustomers] = useState<Customer[]>(() => getStoredCustomers());
+  const [employees, setEmployees] = useState<Employee[]>(() => getStoredEmployees());
+  const [services, setServices] = useState<ServiceRecord[]>(() => getStoredServices());
+  const [deliveries, setDeliveries] = useState<DeliveryLog[]>(() => getStoredDeliveries());
+  const [pettyCash, setPettyCash] = useState<PettyCashTransaction[]>(() => getStoredPettyCash());
+  const [finance, setFinance] = useState<FinancialTransaction[]>(() => getStoredFinance());
+  const [movements, setMovements] = useState<UnitMovementLog[]>(() => getStoredMovements());
+  const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(() => getStoredPayroll());
+  const [rentalOrders, setRentalOrders] = useState<RentalOrder[]>(() => getStoredRentalOrders());
+
+  // Modal State for New Rental Workflow
+  const [isRentalModalOpen, setIsRentalModalOpen] = useState<boolean>(false);
+  const [preSelectedLaptop, setPreSelectedLaptop] = useState<Laptop | null>(null);
+  const [preSelectedCustomer, setPreSelectedCustomer] = useState<Customer | null>(null);
+
+  // Save to persistent storage upon state changes
+  const handleSaveLaptops = (updated: Laptop[]) => {
+    setLaptops(updated);
+    saveStoredLaptops(updated);
   };
 
-  const handleAdminAccess = () => {
-    const session = getStoredAdminSession();
-    if (session && session.isAuthenticated) {
-      setCurrentView('admin');
+  const handleSaveCustomers = (updated: Customer[]) => {
+    setCustomers(updated);
+    saveStoredCustomers(updated);
+  };
+
+  const handleSaveEmployees = (updated: Employee[]) => {
+    setEmployees(updated);
+    saveStoredEmployees(updated);
+  };
+
+  const handleSaveServices = (updated: ServiceRecord[]) => {
+    setServices(updated);
+    saveStoredServices(updated);
+  };
+
+  const handleSaveDeliveries = (updated: DeliveryLog[]) => {
+    setDeliveries(updated);
+    saveStoredDeliveries(updated);
+  };
+
+  const handleSavePettyCash = (updated: PettyCashTransaction[]) => {
+    setPettyCash(updated);
+    saveStoredPettyCash(updated);
+  };
+
+  const handleSaveFinance = (updated: FinancialTransaction[]) => {
+    setFinance(updated);
+    saveStoredFinance(updated);
+  };
+
+  const handleSaveMovements = (updated: UnitMovementLog[]) => {
+    setMovements(updated);
+    saveStoredMovements(updated);
+  };
+
+  const handleSavePayroll = (updated: PayrollRecord[]) => {
+    setPayrollRecords(updated);
+    saveStoredPayroll(updated);
+  };
+
+  const handleSaveRentalOrders = (updated: RentalOrder[]) => {
+    setRentalOrders(updated);
+    saveStoredRentalOrders(updated);
+  };
+
+  const handleOpenRentalModal = (preLaptop?: Laptop, preCustomer?: Customer) => {
+    setPreSelectedLaptop(preLaptop || null);
+    setPreSelectedCustomer(preCustomer || null);
+    setIsRentalModalOpen(true);
+  };
+
+  const handleCompleteRental = (data: {
+    order: RentalOrder;
+    updatedLaptop: Laptop;
+    savedCustomer: Customer;
+    movementLog: UnitMovementLog;
+    financeTransaction: FinancialTransaction;
+    deliveryLog?: DeliveryLog;
+  }) => {
+    // 1. Add order to rental orders list
+    const nextOrders = [data.order, ...rentalOrders];
+    handleSaveRentalOrders(nextOrders);
+
+    // 2. Mark laptop status as 'rented' and set current renter
+    const nextLaptops = laptops.map(l => l.id === data.updatedLaptop.id ? data.updatedLaptop : l);
+    handleSaveLaptops(nextLaptops);
+
+    // 3. Update or save customer details
+    const existingCustIdx = customers.findIndex(c => c.id === data.savedCustomer.id);
+    let nextCustomers: Customer[];
+    if (existingCustIdx >= 0) {
+      nextCustomers = [...customers];
+      nextCustomers[existingCustIdx] = data.savedCustomer;
     } else {
-      setShowAdminLoginModal(true);
+      nextCustomers = [data.savedCustomer, ...customers];
+    }
+    handleSaveCustomers(nextCustomers);
+
+    // 4. Record unit movement out
+    const nextMovements = [data.movementLog, ...movements];
+    handleSaveMovements(nextMovements);
+
+    // 5. Record income in financial ledger under 'sewa'
+    const nextFinance = [data.financeTransaction, ...finance];
+    handleSaveFinance(nextFinance);
+
+    // 6. Record delivery order if delivery service chosen
+    if (data.deliveryLog) {
+      const nextDeliveries = [data.deliveryLog, ...deliveries];
+      handleSaveDeliveries(nextDeliveries);
+    }
+
+    // Switch view to rentals to see the newly generated order & print SPK
+    setCurrentTab('rentals');
+  };
+
+  const handleSelectBranch = (branch: BranchCity | 'Semua') => {
+    setSelectedBranch(branch);
+    saveStoredSelectedBranch(branch);
+  };
+
+  const handleSwitchUser = (newSession: UserAuthSession) => {
+    setSession(newSession);
+    saveStoredSession(newSession);
+  };
+
+  const handleResetData = () => {
+    if (confirm('Apakah Anda yakin ingin mereset seluruh database ERP ke kondisi demo awal?')) {
+      resetAllErpData();
+      window.location.reload();
     }
   };
 
-  const handleOpenRental = (laptop: Laptop) => {
-    setSelectedLaptopForRental(laptop);
-  };
+  // Real-time Service SLA Overdue Calculations (Pillar 8)
+  const overdueInternalCount = services.filter(s => {
+    if (s.status !== 'internal_repair') return false;
+    const days = s.internalStartedDate ? calculateDaysElapsed(s.internalStartedDate) : s.internalDaysElapsed;
+    return days >= 7;
+  }).length;
 
-  const handleBookingSuccess = (order: RentalOrder) => {
-    setSelectedLaptopForRental(null);
-    setActiveTrackingOrderId(order.id);
-    setShowBookingSuccessToast({ show: true, orderId: order.id });
-    setCurrentView('tracking');
+  const overdueExternalCount = services.filter(s => {
+    if (s.status !== 'external_vendor') return false;
+    const days = s.externalSentDate ? calculateDaysElapsed(s.externalSentDate) : (s.externalDaysElapsed || 0);
+    return days >= 14;
+  }).length;
 
-    setTimeout(() => {
-      setShowBookingSuccessToast({ show: false, orderId: '' });
-    }, 6000);
-  };
-
-  const handleSelectOrderFromAdmin = (orderId: string) => {
-    setActiveTrackingOrderId(orderId);
-    setCurrentView('tracking');
-  };
+  const troubleLaptopCount = laptops.filter(l => l.status === 'trouble').length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/60 text-slate-900 selection:bg-blue-600 selection:text-white">
-      {/* Top Navbar */}
-      <Navbar
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onOpenTrackingId={(id) => {
-          setActiveTrackingOrderId(id);
-          setCurrentView('tracking');
-        }}
-        activeTrackingId={activeTrackingOrderId}
-        onOpenAdminLogin={handleAdminAccess}
-        onOpenAccount={() => setShowAccountModal(true)}
-        onOpenCustomerLogin={() => setShowCustomerLoginModal(true)}
+    <div className="min-h-screen bg-[#faf8f5] text-stone-900 font-sans antialiased flex flex-col">
+      {/* Top Main Navbar */}
+      <ErpNavbar
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        selectedBranch={selectedBranch}
+        onSelectBranch={handleSelectBranch}
+        session={session}
+        onSwitchUser={handleSwitchUser}
+        onResetData={handleResetData}
+        overdueInternalCount={overdueInternalCount}
+        overdueExternalCount={overdueExternalCount}
+        troubleLaptopCount={troubleLaptopCount}
+        onOpenRentalModal={() => handleOpenRentalModal()}
       />
 
-      {/* Booking Success Floating Toast */}
-      {showBookingSuccessToast.show && (
-        <div className="fixed bottom-24 right-6 z-50 max-w-md bg-white text-slate-900 rounded-2xl p-5 shadow-xl border border-blue-200 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-5">
-          <CheckCircle2 className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <span className="text-xs font-bold text-blue-600 block uppercase tracking-wider">
-              Pesanan Berhasil Dibuat
-            </span>
-            <p className="text-base font-bold text-slate-900 mt-0.5">
-              Nomor Pesanan: #{showBookingSuccessToast.orderId}
-            </p>
-            <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-              Petugas kami sedang menyiapkan laptop Anda. Status pesanan dapat Anda pantau secara langsung.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7">
-        {/* View Switcher Content */}
-        {currentView === 'catalog' && (
-          <CatalogSection
-            onSelectLaptop={handleOpenRental}
-            onViewDetails={(laptop) => setSelectedLaptopForDetail(laptop)}
-            onNavigateToHubs={() => setCurrentView('hubs')}
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 pb-16">
+        {currentTab === 'dashboard' && (
+          <DashboardOverview
+            laptops={laptops}
+            services={services}
+            deliveries={deliveries}
+            pettyCash={pettyCash}
+            finance={finance}
+            customers={customers}
+            rentalOrders={rentalOrders}
+            selectedBranch={selectedBranch}
+            onNavigateTab={setCurrentTab}
+            overdueInternalCount={overdueInternalCount}
+            overdueExternalCount={overdueExternalCount}
+            onOpenRentalModal={() => handleOpenRentalModal()}
           />
         )}
 
-        {currentView === 'tracking' && (
-          <div className="pb-20">
-            <OrderTrackingView
-              initialOrderId={activeTrackingOrderId}
-              onNavigateToCatalog={() => setCurrentView('catalog')}
-            />
-          </div>
+        {currentTab === 'rentals' && (
+          <RentalOrdersManager
+            orders={rentalOrders}
+            onSaveOrders={handleSaveRentalOrders}
+            laptops={laptops}
+            onSaveLaptops={handleSaveLaptops}
+            movements={movements}
+            onSaveMovements={handleSaveMovements}
+            finance={finance}
+            onSaveFinance={handleSaveFinance}
+            selectedBranch={selectedBranch}
+            session={session}
+            onOpenNewRental={(laptop) => handleOpenRentalModal(laptop)}
+          />
         )}
 
-        {currentView === 'admin' && (
-          <div className="pb-20">
-            <AdminPortal
-              onSelectOrderToTrack={handleSelectOrderFromAdmin}
-              onExitAdmin={() => setCurrentView('catalog')}
-            />
-          </div>
+        {currentTab === 'laptops' && (
+          <LaptopsManager
+            laptops={laptops}
+            onSaveLaptops={handleSaveLaptops}
+            selectedBranch={selectedBranch}
+            onNavigateToService={(laptop) => {
+              setCurrentTab('services');
+            }}
+            onOpenRentalModal={(laptop) => handleOpenRentalModal(laptop)}
+          />
         )}
 
-        {currentView === 'rules' && (
-          <div className="pb-20">
-            <RulesSection />
-          </div>
+        {currentTab === 'movements' && (
+          <UnitMovementsManager
+            movements={movements}
+            onSaveMovements={handleSaveMovements}
+            laptops={laptops}
+            onSaveLaptops={handleSaveLaptops}
+            customers={customers}
+            employees={employees}
+            selectedBranch={selectedBranch}
+          />
         )}
 
-        {currentView === 'hubs' && (
-          <div className="pb-20">
-            <HubsSection />
-          </div>
+        {currentTab === 'services' && (
+          <TechnicianServiceManager
+            services={services}
+            onSaveServices={handleSaveServices}
+            laptops={laptops}
+            onSaveLaptops={handleSaveLaptops}
+            technicians={employees}
+            selectedBranch={selectedBranch}
+          />
         )}
 
-        {/* Subtle Footer - Akses Tersembunyi Portal Petugas */}
-        {currentView !== 'admin' && (
-          <footer className="pt-6 pb-20 text-center">
-            <button
-              type="button"
-              onClick={handleAdminAccess}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer select-none"
-            >
-              © 2026 PINJAMLAPTOP.ID • Semua Hak Dilindungi
-            </button>
-          </footer>
+        {currentTab === 'customers' && (
+          <CustomersManager
+            customers={customers}
+            onSaveCustomers={handleSaveCustomers}
+            selectedBranch={selectedBranch}
+            onOpenRentalModal={(customer) => handleOpenRentalModal(undefined, customer)}
+          />
+        )}
+
+        {currentTab === 'deliveries' && (
+          <DeliveryManager
+            deliveries={deliveries}
+            onSaveDeliveries={handleSaveDeliveries}
+            selectedBranch={selectedBranch}
+            couriers={employees}
+          />
+        )}
+
+        {currentTab === 'finance' && (
+          <GeneralFinanceManager
+            transactions={finance}
+            onSaveTransactions={handleSaveFinance}
+            selectedBranch={selectedBranch}
+          />
+        )}
+
+        {currentTab === 'petty_cash' && (
+          <PettyCashManager
+            transactions={pettyCash}
+            onSaveTransactions={handleSavePettyCash}
+            selectedBranch={selectedBranch}
+          />
+        )}
+
+        {currentTab === 'employees' && (
+          <EmployeesManager
+            employees={employees}
+            onSaveEmployees={handleSaveEmployees}
+            selectedBranch={selectedBranch}
+          />
+        )}
+
+        {currentTab === 'payroll' && (
+          <PayrollManager
+            payrollRecords={payrollRecords}
+            onSavePayroll={handleSavePayroll}
+            employees={employees}
+            selectedBranch={selectedBranch}
+          />
         )}
       </main>
 
-      {/* Floating WhatsApp Bantuan Button */}
-      <aside aria-label="Bantuan WhatsApp" className="fixed bottom-20 left-4 sm:left-6 z-30">
-        <a
-          href="https://wa.me/6287725564455?text=Halo%20PINJAMLAPTOP.ID,%20saya%20butuh%20bantuan%20sewa%20laptop"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full shadow-lg hover:shadow-blue-600/30 transition-all border border-blue-400 group cursor-pointer"
-          title="Bantuan WhatsApp Langsung: 0877-2556-4455"
-        >
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <MessageCircle className="w-4 h-4 text-white" />
+      {/* Footer */}
+      <footer className="border-t border-[#e8e2d8] bg-white/80 backdrop-blur-xs py-3 px-6 text-xs text-stone-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="font-medium text-stone-700">
+            PINJAMLAPTOP ERP &bull; Manajemen Bisnis Sewa Laptop
           </div>
-          <span className="text-xs sm:text-sm font-bold pr-1">
-            Chat WA
-          </span>
-        </a>
-      </aside>
+          <div className="text-[11px] text-stone-400 font-mono">
+            Malang (Pusat) &bull; Sidoarjo &bull; Bekasi &bull; Logistik Rp 5.000/km &bull; SLA Servis 7/14 Hari
+          </div>
+        </div>
+      </footer>
 
-      {/* Bottom Navigation Bar */}
-      <BottomNav
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onSelectCategoryTab={() => {
-          setCurrentView('catalog');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+      {/* Modal Alur Sewa Baru (Pilih Unit, Data Penyewa, Jaminan/Deposit, Verifikasi & Cetak SPK) */}
+      <RentalWorkflowModal
+        isOpen={isRentalModalOpen}
+        onClose={() => {
+          setIsRentalModalOpen(false);
+          setPreSelectedLaptop(null);
+          setPreSelectedCustomer(null);
         }}
-        onOpenAccount={() => setShowAccountModal(true)}
+        laptops={laptops}
+        customers={customers}
+        selectedBranch={selectedBranch}
+        preSelectedLaptop={preSelectedLaptop}
+        preSelectedCustomer={preSelectedCustomer}
+        session={session}
+        onCompleteRental={handleCompleteRental}
       />
 
-      {/* Detail Specs Modal */}
-      <LaptopDetailModal
-        laptop={selectedLaptopForDetail}
-        onClose={() => setSelectedLaptopForDetail(null)}
-        onSelectForRental={handleOpenRental}
-      />
-
-      {/* Booking Form Modal */}
-      <RentalBookingModal
-        laptop={selectedLaptopForRental}
-        onClose={() => setSelectedLaptopForRental(null)}
-        onBookingSuccess={handleBookingSuccess}
-      />
-
-      {/* Customer Account & Order Status Modal */}
-      <AccountModal
-        isOpen={showAccountModal}
-        onClose={() => setShowAccountModal(false)}
-        onNavigateToTracking={(orderId) => {
-          if (orderId) {
-            setActiveTrackingOrderId(orderId);
-          }
-          setCurrentView('tracking');
-        }}
-        onOpenAdminLogin={() => setShowAdminLoginModal(true)}
-        onNavigateToAdminPortal={handleAdminAccess}
-        onOpenCustomerLogin={() => setShowCustomerLoginModal(true)}
-      />
-
-      {/* Customer / Renter Login & Register Modal */}
-      <CustomerLoginModal
-        isOpen={showCustomerLoginModal}
-        onClose={() => setShowCustomerLoginModal(false)}
-        onNavigateToTracking={(orderId) => {
-          if (orderId) {
-            setActiveTrackingOrderId(orderId);
-          }
-          setCurrentView('tracking');
-        }}
-      />
-
-      {/* Admin Login Modal */}
-      <AdminLoginModal
-        isOpen={showAdminLoginModal}
-        onClose={() => setShowAdminLoginModal(false)}
-        onLoginSuccess={() => {
-          setShowAdminLoginModal(false);
-          setCurrentView('admin');
-        }}
+      {/* Authentication & Role Switcher Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={handleSwitchUser}
       />
     </div>
   );

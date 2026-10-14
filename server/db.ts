@@ -125,8 +125,24 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
   `);
 
-  // Ensure pinjamlaptopid exists as admin user
+  // Ensure default admin users exist
   try {
+    const existingAdmin = db.prepare("SELECT id FROM users WHERE lower(username) = 'admin'").get();
+    if (!existingAdmin) {
+      db.prepare(`
+        INSERT INTO users (id, username, password_hash, name, role, role_title, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'ADM-001',
+        'admin',
+        bcrypt.hashSync('admin123', 10),
+        'Hendra Wijaya, S.Kom',
+        'super_admin',
+        'Chief Operations & Systems Admin',
+        new Date().toISOString()
+      );
+    }
+
     const existingPinjam = db.prepare("SELECT id FROM users WHERE lower(username) = 'pinjamlaptopid'").get();
     if (!existingPinjam) {
       db.prepare(`
@@ -148,35 +164,22 @@ export function initDatabase() {
 }
 
 function seedInitialData() {
-  // 1. Seed initial admin and staff users if table is empty
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-  if (userCount.count === 0) {
-    const adminUsername = (process.env.ADMIN_USERNAME || 'admin').trim();
-    const adminPassword = (process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'admin123456')).trim();
+  const insertUser = db.prepare(`
+    INSERT OR IGNORE INTO users (id, username, password_hash, name, role, role_title, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  const now = new Date().toISOString();
 
-    if (!adminPassword || adminPassword.length < 8) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('[DB Security Error] ADMIN_PASSWORD environment variable must be set with at least 8 characters in production!');
-      }
-    }
-
-    const insertUser = db.prepare(`
-      INSERT INTO users (id, username, password_hash, name, role, role_title, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const now = new Date().toISOString();
-
-    // Primary Admin (configured from env)
-    insertUser.run(
-      'ADM-001',
-      adminUsername,
-      bcrypt.hashSync(adminPassword, 10),
-      'Hendra Wijaya, S.Kom',
-      'super_admin',
-      'Chief Operations & Systems Admin',
-      now
-    );
+  // Primary Admin
+  insertUser.run(
+    'ADM-001',
+    'admin',
+    bcrypt.hashSync('admin123', 10),
+    'Hendra Wijaya, S.Kom',
+    'super_admin',
+    'Chief Operations & Systems Admin',
+    now
+  );
 
     // Optional Staff accounts if configured in env with strong password
     if (process.env.FINANCE_PASSWORD && process.env.FINANCE_PASSWORD.length >= 8) {
@@ -203,8 +206,7 @@ function seedInitialData() {
       );
     }
 
-    console.log(`[DB] Seeded primary admin user (${adminUsername})`);
-  }
+    console.log('[DB] Seeded admin user');
 
   // 2. Seed catalog if table is empty
   const laptopCount = db.prepare('SELECT COUNT(*) as count FROM laptops').get() as { count: number };

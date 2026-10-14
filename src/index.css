@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: #faf8f5;
+  color: #292524;
+}
+
+/* Custom pastel soft scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f5f2ea;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d3c5;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bebaa9;
+}
+
 @media print {
   @page {
     size: A4 portrait;

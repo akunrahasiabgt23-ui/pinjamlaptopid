@@ -23,7 +23,7 @@ fi
 
 # 3. Install dependency jika ada paket baru & build frontend
 echo "Building project..." >> "$LOG_FILE"
-npm install --legacy-peer-deps >> "$LOG_FILE" 2>&1
+npm install --legacy-peer-deps --include=dev >> "$LOG_FILE" 2>&1
 npm run build >> "$LOG_FILE" 2>&1
 
 # 4. Restart server via PM2
